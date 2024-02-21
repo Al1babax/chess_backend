@@ -2,14 +2,17 @@ from engine import movement
 from typing import List
 import random
 
+
+# TODO: Write testing for every basic piece movement (necessary to fix other stuff)
 # TODO: Write testing for is_pinned and castling all cases
-# TODO: Finnish is_checkmate
-# TODO: Finnish is_stalemate
+# TODO: Fix is_checkmate
+# TODO: Fix is_stalemate
 # TODO: [BONUS] add threefold repetition rule by checking if the same board state has been repeated 3 times
+# TODO: Rook cannot initiate castling if it has moved
 
 
 class Board:
-    def __init__(self):
+    def __init__(self, custom_fen: List[str] = None) -> None:
         # Letter to index
         self.lti: dict = {chr(97 + i): i for i in range(8)}
         self.itl: dict = {i: chr(97 + i) for i in range(8)}
@@ -17,12 +20,37 @@ class Board:
         self.white_moves: List[str] = []
         self.black_moves: List[str] = []
 
-        self.init_board()
+        if custom_fen is None:
+            self.init_board()
+        else:
+            self.board = custom_fen
 
     def init_board(self) -> None:
         # Init board using FEN, instead of 8 have multiple 1's
         self.board = ["rnbqkbnr", "pppppppp", "11111111", "11111111", "11111111", "11111111", "PPPPPPPP", "RNBQKBNR",
                       "w", "KQkq", "-", "0", "1"]
+
+    def fen(self) -> str:
+        # Convert the board to FEN
+        fen = ""
+        for row in self.board[:8]:
+            empty = 0
+            for char in row:
+                if char == "1":
+                    empty += 1
+                else:
+                    if empty:
+                        fen += str(empty)
+                        empty = 0
+                    fen += char
+            if empty:
+                fen += str(empty)
+            fen += "/"
+
+        fen = fen[:-1]
+        fen += f" {self.board[-5]} {self.board[-4]} {self.board[-3]} {self.board[-2]} {self.board[-1]}"
+
+        return fen
 
     def is_pinned(self, row: int, col: int) -> bool:
         """
@@ -39,6 +67,8 @@ class Board:
         if self.is_check():
             self.board[row] = self.board[row][:col] + piece + self.board[row][col + 1:]
             return True
+
+        return False
 
     def is_check(self) -> bool:
         """
@@ -60,6 +90,8 @@ class Board:
 
         # IF king not find raise exception
         if not king_pos:
+            print(f"King is not found in the following board, turn: {turn}")
+            print(self.board)
             raise ValueError("King not found")
 
         # Make a list of candidates which base on all possible movement and if there is enemy piece in the end of list
@@ -87,6 +119,8 @@ class Board:
 
         # Loop over the candidates and check if there is an enemy piece
         for candidate in candidates:
+            candidate = candidate.split(",")[1]
+
             row = 8 - int(candidate[2])
             col = self.lti[candidate[1]]
             board_piece = self.board[row][col]
@@ -96,12 +130,12 @@ class Board:
                 continue
 
             # Make sure the enemy piece can move to the king
-            if self.is_valid_move((row, col), king_pos):
+            if self.is_valid_move((row, col), king_pos, is_check_call=True):
                 return True
 
         return False
 
-    def is_checkmate(self, color: str) -> bool:
+    def is_checkmate(self) -> bool:
         """
         Check if a player is in checkmate
         :param color: The color of the player
@@ -111,13 +145,20 @@ class Board:
         if self.is_check() and not self.generate_moves():
             return True
 
-    def is_stalemate(self, color: str) -> bool:
+        return False
+
+    def is_stalemate(self) -> bool:
         """
         Check if a player is in stalemate
+        King is not in check, but all the moves king can make lead to check
         :param color: The color of the player
         :return: True if the player is in stalemate, False otherwise
         """
-        pass
+        # IF king is not in check and after doing any possible move the king is still in check it is stalemate
+        if not self.is_check() and not self.generate_moves():
+            return True
+
+        return False
 
     def generate_bishop_moves(self) -> list:
         """
@@ -275,16 +316,16 @@ class Board:
             # add castling moves
             if turn == "w":
                 if "K" in self.board[-4] and self.board[7][5] == "1" and self.board[7][6] == "1":
-                    moves.append("Kg1")
+                    moves.append("Ke1,Kg1")
                 if "Q" in self.board[-4] and self.board[7][3] == "1" and self.board[7][2] == "1" and self.board[7][
                     1] == "1":
-                    moves.append("Kc1")
+                    moves.append("Ke1,Kc1")
             else:
                 if "k" in self.board[-4] and self.board[0][5] == "1" and self.board[0][6] == "1":
-                    moves.append("Kg8")
+                    moves.append("Ke8,Kg8")
                 if "q" in self.board[-4] and self.board[0][3] == "1" and self.board[0][2] == "1" and self.board[0][
                     1] == "1":
-                    moves.append("Kc8")
+                    moves.append("Ke8,Kc8")
 
         return moves
 
@@ -329,9 +370,10 @@ class Board:
 
         return moves
 
-    def is_valid_move(self, old_pos: tuple, new_pos: tuple) -> bool:
+    def is_valid_move(self, old_pos: tuple, new_pos: tuple, is_check_call: bool = False) -> bool:
         """
         Make sure the move is within generated moves for that piece
+        :param is_check_call:
         :param old_pos:
         :param new_pos:
         :return:
@@ -355,20 +397,24 @@ class Board:
             return False
 
         # Move the piece momentarily and check if the king is in check
-        self.board[old_pos[0]] = self.board[old_pos[0]][:old_pos[1]] + "1" + self.board[old_pos[0]][old_pos[1] + 1:]
-        self.board[new_pos[0]] = self.board[new_pos[0]][:new_pos[1]] + piece + self.board[new_pos[0]][
-                                                                               new_pos[1] + 1:]
-        check_status = self.is_check()
+        if not is_check_call:
+            self.board[old_pos[0]] = self.board[old_pos[0]][:old_pos[1]] + "1" + self.board[old_pos[0]][old_pos[1] + 1:]
+            self.board[new_pos[0]] = self.board[new_pos[0]][:new_pos[1]] + piece + self.board[new_pos[0]][
+                                                                                   new_pos[1] + 1:]
+            check_status = self.is_check()
 
-        self.board[old_pos[0]] = self.board[old_pos[0]][:old_pos[1]] + piece + self.board[old_pos[0]][
-                                                                               old_pos[1] + 1:]
-        self.board[new_pos[0]] = self.board[new_pos[0]][:new_pos[1]] + "1" + self.board[new_pos[0]][
+            self.board[old_pos[0]] = self.board[old_pos[0]][:old_pos[1]] + piece + self.board[old_pos[0]][
+                                                                                   old_pos[1] + 1:]
+            self.board[new_pos[0]] = self.board[new_pos[0]][:new_pos[1]] + "1" + self.board[new_pos[0]][
                                                                                  new_pos[1] + 1:]
-        if check_status:
-            return False
+            if check_status:
+                return False
 
         # Check if the new position is in the list of moves
         for move in moves:
+            # Take only the destination of a move
+            move = move.split(",")[1]
+
             # if pawn
             if piece in "pP":
                 if move == f"{self.itl[new_pos[1]]}{8 - new_pos[0]}":
@@ -432,13 +478,13 @@ class Board:
             self.board[-4] = self.board[-4].replace("q", "")
 
     def move(self, old_pos: str, new_pos: str) -> None:
-        row = 8 - int(old_pos[1])
-        col = int(self.lti[old_pos[0]])
-        o_p = (row, col)
-
-        row = 8 - int(new_pos[1])
-        col = int(self.lti[new_pos[0]])
-        n_p = (row, col)
+        # IF pawn move it does not have the piece as prefix
+        if len(old_pos) == 3:
+            o_p = (8 - int(old_pos[2]), self.lti[old_pos[1]])
+            n_p = (8 - int(new_pos[2]), self.lti[new_pos[1]])
+        else:
+            o_p = (8 - int(old_pos[1]), self.lti[old_pos[0]])
+            n_p = (8 - int(new_pos[1]), self.lti[new_pos[0]])
 
         print(f"Moving {self.board[o_p[0]][o_p[1]]} from {old_pos} to {new_pos}")
 
@@ -460,6 +506,12 @@ class Board:
             # Remove en passant if the move is not a pawn move
             if piece not in "pP":
                 self.board[-3] = "-"
+
+            # Check if checkmate
+            if self.is_checkmate():
+                raise ValueError("Checkmate")
+            elif self.is_stalemate():
+                raise ValueError("Stalemate")
 
             # Change turn THIS NEEDS TO BE LAST
             self.board[-5] = "w" if self.board[-5] == "b" else "b"
@@ -525,9 +577,8 @@ class Board:
         enemy_pawn = "p" if self.board[-5] == "w" else "P"
 
         # Handle en passant by checking if new position has enemy pawn in the same column right or left
-        #TODO: Fix out of boundary error
-        if piece in "pP" and (
-                self.board[n_p[0]][n_p[1] + 1] == enemy_pawn or self.board[n_p[0]][n_p[1] - 1] == enemy_pawn):
+        if piece in "pP" and ((n_p[1] + 1 < 8 and self.board[n_p[0]][n_p[1] + 1] == enemy_pawn) or (
+                n_p[1] + 1 >= 0 and self.board[n_p[0]][n_p[1] - 1] == enemy_pawn)) and abs(o_p[0] - n_p[0]) == 2:
             # Also make sure the square behind enemy pawn is empty
             if piece == "p" and self.board[n_p[0] + 1][n_p[1] + 1] == "1":
                 self.board[-3] = f"{self.itl[n_p[1]]}{8 - n_p[0] + 1}"
@@ -542,13 +593,20 @@ class Board:
         if piece not in "pP":
             self.board[-3] = "-"
 
+        # Check if checkmate
+        if self.is_checkmate():
+            raise ValueError("Checkmate")
+        elif self.is_stalemate():
+            raise ValueError("Stalemate")
+
         # Change turn THIS NEEDS TO BE LAST
         self.board[-5] = "w" if self.board[-5] == "b" else "b"
 
 
 class Engine:
-    def __init__(self):
-        self.board = Board()
+    def __init__(self, custom_fen: List[str] = None) -> None:
+        self.board = Board(custom_fen)
+        self.moves = []
 
     def move(self, old_pos: str, new_pos: str) -> None:
         self.board.move(old_pos, new_pos)
@@ -558,11 +616,15 @@ class Engine:
         return self.board.generate_moves()
 
     def do_random_move(self) -> None:
-        # DOES NOT WORK YET, random move only have destination, not source
         # DO random move using random library
         moves = self.get_moves()
-        move = random.choice(moves)
-        self.move(move[:2], move[2:])
+        move = random.choice(moves).split(",")
+        self.move(move[0], move[1])
+
+        # Record move
+        # FOR DEBUGGING
+        # self.moves.append(move)
+        # print(self.moves)
 
 
 def test_castling(engine: Engine):
@@ -576,15 +638,55 @@ def test_castling(engine: Engine):
     engine.move("e1", "g1")
 
 
-if __name__ == "__main__":
+def random_50_test():
     engine = Engine()
 
-    engine.move('e2', 'e4')
-    engine.move('e7', 'e5')
-    engine.move('g1', 'f3')
-    engine.move('g8', 'f6')
-    engine.move('f1', 'c4')
-    engine.move('f8', 'c5')
-    engine.move('e1', 'g1')
+    for _ in range(200):
+        engine.do_random_move()
 
-    print(engine.board.board)
+
+def pretty_print_fen(board_state):
+    # Mapping for piece characters
+    piece_mapping = {
+        '1': '[  ]',
+        'k': '[♚]',
+        'q': '[♛]',
+        'r': '[♜]',
+        'b': '[♝]',
+        'n': '[♞]',
+        'p': '[♟]',
+        'K': '[♔]',
+        'Q': '[♕]',
+        'R': '[♖]',
+        'B': '[♗]',
+        'N': '[♘]',
+        'P': '[♙]'
+    }
+
+    # Print the chessboard
+    for row in board_state[:8][::-1]:
+        for char in row:
+            print(f'{piece_mapping.get(char, char): <3}', end='')
+        print()
+
+    # Print turn, castling, and en passant information
+    print(f'Turn: {board_state[8]}')
+    print(f'Castling: {board_state[9]}')
+    print(f'En Passant: {board_state[10]}')
+    print(f'Halfmove Clock: {board_state[11]}')
+    print(f'Fullmove Number: {board_state[12]}')
+
+
+if __name__ == "__main__":
+    # Moving n from Nb4 to Na2 possibly ate king
+    engine = Engine(['1r11k1n1', '111B1111', 'b111P111', 'p1111p1p', '1n111PNP', '1111111r', 'K1R11p11', '11111111', 'b', '', '-', '37', '94'])
+
+    print(engine.board.fen())
+    # random_50_test()
+
+    # moves = [['Ng1', 'Nf3'], ['c7', 'c5'], ['c2', 'c4'], ['Nb8', 'Na6'], ['Qd1', 'Qc2'], ['Qd8', 'Qb6'], ['Qc2', 'Qd1'],
+    #          ['Na6', 'Nc7'], ['g2', 'g3'], ['h7', 'h6'], ['a2', 'a4'], ['Qb6', 'Qa6'], ['Bf1', 'Bg2'], ["d7", "d6"]]
+    #
+    # # Run all the moves in moves list
+    # for move in moves:
+    #     engine.move(move[0], move[1])

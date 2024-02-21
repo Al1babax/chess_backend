@@ -20,9 +20,9 @@ def move_top_right(board: List[str], row: int, col: int, enemy_pieces: str, dist
     for i in range(1, distance + 1):
         if row + i < 8 and col + i < 8:
             if board[row + i][col + i] == "1":
-                moves.append(f"{piece}{itl[col + i]}{8 - (row + i)}")
+                moves.append(f"{piece}{itl[col]}{8 - row},{piece}{itl[col + i]}{8 - (row + i)}")
             elif board[row + i][col + i] in enemy_pieces:
-                moves.append(f"{piece}{itl[col + i]}{8 - (row + i)}")
+                moves.append(f"{piece}{itl[col]}{8 - row},{piece}{itl[col + i]}{8 - (row + i)}")
                 break
             else:
                 break
@@ -40,9 +40,9 @@ def move_top_left(board: List[str], row: int, col: int, enemy_pieces: str, dista
     for i in range(1, distance + 1):
         if row + i < 8 and col - i >= 0:
             if board[row + i][col - i] == "1":
-                moves.append(f"{piece}{itl[col - i]}{8 - (row + i)}")
+                moves.append(f"{piece}{itl[col]}{8 - row},{piece}{itl[col - i]}{8 - (row + i)}")
             elif board[row + i][col - i] in enemy_pieces:
-                moves.append(f"{piece}{itl[col - i]}{8 - (row + i)}")
+                moves.append(f"{piece}{itl[col]}{8 - row},{piece}{itl[col - i]}{8 - (row + i)}")
                 break
             else:
                 break
@@ -60,9 +60,9 @@ def move_bottom_right(board: List[str], row: int, col: int, enemy_pieces: str, d
     for i in range(1, distance + 1):
         if row - i >= 0 and col + i < 8:
             if board[row - i][col + i] == "1":
-                moves.append(f"{piece}{itl[col + i]}{8 - (row - i)}")
+                moves.append(f"{piece}{itl[col]}{8 - row},{piece}{itl[col + i]}{8 - (row - i)}")
             elif board[row - i][col + i] in enemy_pieces:
-                moves.append(f"{piece}{itl[col + i]}{8 - (row - i)}")
+                moves.append(f"{piece}{itl[col]}{8 - row},{piece}{itl[col + i]}{8 - (row - i)}")
                 break
             else:
                 break
@@ -80,9 +80,9 @@ def move_bottom_left(board: List[str], row: int, col: int, enemy_pieces: str, di
     for i in range(1, distance + 1):
         if row - i >= 0 and col - i >= 0:
             if board[row - i][col - i] == "1":
-                moves.append(f"{piece}{itl[col - i]}{8 - (row - i)}")
+                moves.append(f"{piece}{itl[col]}{8 - row},{piece}{itl[col - i]}{8 - (row - i)}")
             elif board[row - i][col - i] in enemy_pieces:
-                moves.append(f"{piece}{itl[col - i]}{8 - (row - i)}")
+                moves.append(f"{piece}{itl[col]}{8 - row},{piece}{itl[col - i]}{8 - (row - i)}")
                 break
             else:
                 break
@@ -100,9 +100,9 @@ def move_up(board: List[str], row: int, col: int, enemy_pieces: str, distance: i
     for i in range(1, distance + 1):
         if row + i < 8:
             if board[row + i][col] == "1":
-                moves.append(f"{piece}{itl[col]}{8 - (row + i)}")
+                moves.append(f"{piece}{itl[col]}{8 - row},{piece}{itl[col]}{8 - (row + i)}")
             elif board[row + i][col] in enemy_pieces:
-                moves.append(f"{piece}{itl[col]}{8 - (row + i)}")
+                moves.append(f"{piece}{itl[col]}{8 - row},{piece}{itl[col]}{8 - (row + i)}")
                 break
             else:
                 break
@@ -120,9 +120,9 @@ def move_down(board: List[str], row: int, col: int, enemy_pieces: str, distance:
     for i in range(1, distance + 1):
         if row - i >= 0:
             if board[row - i][col] == "1":
-                moves.append(f"{piece}{itl[col]}{8 - (row - i)}")
+                moves.append(f"{piece}{itl[col]}{8 - row},{piece}{itl[col]}{8 - (row - i)}")
             elif board[row - i][col] in enemy_pieces:
-                moves.append(f"{piece}{itl[col]}{8 - (row - i)}")
+                moves.append(f"{piece}{itl[col]}{8 - row},{piece}{itl[col]}{8 - (row - i)}")
                 break
             else:
                 break
@@ -140,9 +140,9 @@ def move_right(board: List[str], row: int, col: int, enemy_pieces: str, distance
     for i in range(1, distance + 1):
         if col + i < 8:
             if board[row][col + i] == "1":
-                moves.append(f"{piece}{itl[col + i]}{8 - row}")
+                moves.append(f"{piece}{itl[col]}{8 - row},{piece}{itl[col + i]}{8 - row}")
             elif board[row][col + i] in enemy_pieces:
-                moves.append(f"{piece}{itl[col + i]}{8 - row}")
+                moves.append(f"{piece}{itl[col]}{8 - row},{piece}{itl[col + i]}{8 - row}")
                 break
             else:
                 break
@@ -160,9 +160,9 @@ def move_left(board: List[str], row: int, col: int, enemy_pieces: str, distance:
     for i in range(1, distance + 1):
         if col - i >= 0:
             if board[row][col - i] == "1":
-                moves.append(f"{piece}{itl[col - i]}{8 - row}")
+                moves.append(f"{piece}{itl[col]}{8 - row},{piece}{itl[col - i]}{8 - row}")
             elif board[row][col - i] in enemy_pieces:
-                moves.append(f"{piece}{itl[col - i]}{8 - row}")
+                moves.append(f"{piece}{itl[col]}{8 - row},{piece}{itl[col - i]}{8 - row}")
                 break
             else:
                 break
@@ -176,9 +176,9 @@ def move_knight(board: List[str], row: int, col: int, enemy_pieces: str):
     def move_knight_helper(row_offset: int, col_offset: int) -> None:
         if 0 <= row + row_offset < 8 and 0 <= col + col_offset < 8:
             if board[row + row_offset][col + col_offset] == "1":
-                moves.append(f"{piece}{itl[col + col_offset]}{8 - (row + row_offset)}")
+                moves.append(f"{piece}{itl[col]}{8 - row},{piece}{itl[col + col_offset]}{8 - (row + row_offset)}")
             elif board[row + row_offset][col + col_offset] in enemy_pieces:
-                moves.append(f"{piece}{itl[col + col_offset]}{8 - (row + row_offset)}")
+                moves.append(f"{piece}{itl[col]}{8 - row},{piece}{itl[col + col_offset]}{8 - (row + row_offset)}")
 
     moves = []
     piece = board[row][col].upper()
@@ -200,22 +200,22 @@ def move_pawn(board: List[str], row: int, col: int, enemy_pieces: str):
 
     if board[-5] == "w":
         if row - 1 > 0 and board[row - 1][col] == "1":
-            moves.append(f"{piece}{itl[col]}{8 - (row - 1)}")
+            moves.append(f"{piece}{itl[col]}{8 - row},{piece}{itl[col]}{8 - (row - 1)}")
             if row == 6 and board[row - 2][col] == "1":
-                moves.append(f"{piece}{itl[col]}{8 - (row - 2)}")
+                moves.append(f"{piece}{itl[col]}{8 - row},{piece}{itl[col]}{8 - (row - 2)}")
         if row - 1 > 0 and col + 1 < 8 and board[row - 1][col + 1] in enemy_pieces:
-            moves.append(f"{piece}{itl[col + 1]}{8 - (row - 1)}")
+            moves.append(f"{piece}{itl[col]}{8 - row},{piece}{itl[col + 1]}{8 - (row - 1)}")
         if row - 1 > 0 and col - 1 >= 0 and board[row - 1][col - 1] in enemy_pieces:
-            moves.append(f"{piece}{itl[col - 1]}{8 - (row - 1)}")
+            moves.append(f"{piece}{itl[col]}{8 - row},{piece}{itl[col - 1]}{8 - (row - 1)}")
     else:
         if row + 1 < 8 and board[row + 1][col] == "1":
-            moves.append(f"{piece}{itl[col]}{8 - (row + 1)}")
+            moves.append(f"{piece}{itl[col]}{8 - row},{piece}{itl[col]}{8 - (row + 1)}")
             if row == 1 and board[row + 2][col] == "1":
-                moves.append(f"{piece}{itl[col]}{8 - (row + 2)}")
+                moves.append(f"{piece}{itl[col]}{8 - row},{piece}{itl[col]}{8 - (row + 2)}")
         if row + 1 < 8 and col + 1 < 8 and board[row + 1][col + 1] in enemy_pieces:
-            moves.append(f"{piece}{itl[col + 1]}{8 - (row + 1)}")
+            moves.append(f"{piece}{itl[col]}{8 - row},{piece}{itl[col + 1]}{8 - (row + 1)}")
         if row + 1 < 8 and col - 1 >= 0 and board[row + 1][col - 1] in enemy_pieces:
-            moves.append(f"{piece}{itl[col - 1]}{8 - (row + 1)}")
+            moves.append(f"{piece}{itl[col]}{8 - row},{piece}{itl[col - 1]}{8 - (row + 1)}")
 
     # Also check for en passant the square where pawn can land is in the FEN notation
     possible_en_passant = board[-3]
@@ -227,9 +227,9 @@ def move_pawn(board: List[str], row: int, col: int, enemy_pieces: str):
 
         if board[-5] == "b":
             if en_passant_row == row + 1 and (col + 1 == en_passant_col or col - 1 == en_passant_col):
-                moves.append(possible_en_passant)
+                moves.append(f"{piece}{itl[col]}{8 - row},({possible_en_passant}")
         else:
             if en_passant_row == row - 1 and (col + 1 == en_passant_col or col - 1 == en_passant_col):
-                moves.append(possible_en_passant)
+                moves.append(f"{piece}{itl[col]}{8 - row},({possible_en_passant}")
 
     return moves
