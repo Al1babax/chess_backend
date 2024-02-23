@@ -19,11 +19,20 @@ class Board:
         self.board: List[str] = []
         self.white_moves: List[str] = []
         self.black_moves: List[str] = []
+        self.valid_moves = []
+        self.valid_enemy_moves = []
 
         if custom_fen is None:
             self.init_board()
         else:
             self.board = custom_fen
+
+        # Make valid moves
+        self.valid_moves = self.generate_moves()
+
+        self.board[-5] = "b"
+        self.valid_enemy_moves = self.generate_moves()
+        self.board[-5] = "w"
 
     def init_board(self) -> None:
         # Init board using FEN, instead of 8 have multiple 1's
@@ -77,6 +86,7 @@ class Board:
         :return: True if the player is in check, False otherwise
         """
         turn = self.board[-5]
+
         enemy_pieces = "rnbqkp" if turn == "w" else "RNBQKP"
         king_pos = None
 
@@ -85,12 +95,14 @@ class Board:
             for col in range(8):
                 if turn == "w" and self.board[row][col] in "K":
                     king_pos = (row, col)
+                    break
                 elif turn == "b" and self.board[row][col] in "k":
                     king_pos = (row, col)
+                    break
 
         # IF king not find raise exception
         if not king_pos:
-            print(f"King is not found in the following board, turn: {turn}")
+            print(f"King is not found in the following board, turn: {self.board[-5]}")
             print(self.board)
             raise ValueError("King not found")
 
@@ -130,8 +142,17 @@ class Board:
                 continue
 
             # Make sure the enemy piece can move to the king
-            if self.is_valid_move((row, col), king_pos, is_check_call=True):
-                return True
+            # Generate all movement for that enemy piece and check if one of the reaches the king
+            enemy_piece = self.board[row][col]
+            enemy_piece = "" if enemy_piece in "pP" else enemy_piece
+
+            for move in self.valid_enemy_moves:
+                if enemy_piece in "pP":
+                    if move.split(",")[1] == f"{self.itl[king_pos[1]]}{8 - king_pos[0]}":
+                        return True
+                else:
+                    if move.split(",")[1][1:] == f"{self.itl[king_pos[1]]}{8 - king_pos[0]}":
+                        return True
 
         return False
 
@@ -160,7 +181,7 @@ class Board:
 
         return False
 
-    def generate_bishop_moves(self) -> list:
+    def generate_bishop_moves(self, is_check_call: bool = False) -> list:
         """
         Generate all possible bishop moves, use chess notation
         :return: A list of all possible bishop moves
@@ -186,12 +207,20 @@ class Board:
 
             for move in movements:
                 new_moves = move(self.board, row, col, enemy_pieces)
-                if new_moves:
+                if not new_moves:
+                    continue
+
+                if is_check_call:
                     moves.extend(new_moves)
+                    continue
+
+                for new_move in new_moves:
+                    if not self.is_pinned(8 - int(new_move.split(",")[1][2]), self.lti[new_move.split(",")[1][1]]):
+                        moves.append(new_move)
 
         return moves
 
-    def generate_queen_moves(self) -> list:
+    def generate_queen_moves(self, is_check_call: bool = False) -> list:
         """
         Generate all possible queen moves, use chess notation
         :return: A list of all possible queen moves
@@ -218,12 +247,20 @@ class Board:
 
             for move in movements:
                 new_moves = move(self.board, row, col, enemy_pieces)
-                if new_moves:
+                if not new_moves:
+                    continue
+
+                if is_check_call:
                     moves.extend(new_moves)
+                    continue
+
+                for new_move in new_moves:
+                    if not self.is_pinned(8 - int(new_move.split(",")[1][2]), self.lti[new_move.split(",")[1][1]]):
+                        moves.append(new_move)
 
         return moves
 
-    def generate_knight_moves(self) -> list:
+    def generate_knight_moves(self, is_check_call: bool = False) -> list:
         """
         Generate all possible knight moves, use chess notation
         :return: A list of all possible knight moves
@@ -246,11 +283,22 @@ class Board:
             row, col = pos
 
             # Get knight moves
-            moves.extend(movement.move_knight(self.board, row, col, enemy_pieces))
+            new_moves = movement.move_knight(self.board, row, col, enemy_pieces)
+
+            if not new_moves:
+                continue
+
+            if is_check_call:
+                moves.extend(new_moves)
+                continue
+
+            for move in new_moves:
+                if not self.is_pinned(8 - int(move.split(",")[1][2]), self.lti[move.split(",")[1][1]]):
+                    moves.append(move)
 
         return moves
 
-    def generate_rook_moves(self) -> list:
+    def generate_rook_moves(self, is_check_call: bool = False) -> list:
         """
         Generate all possible rook moves, use chess notation
         :return: A list of all possible rook moves
@@ -275,18 +323,53 @@ class Board:
 
             for move in movements:
                 new_moves = move(self.board, row, col, enemy_pieces)
-                if new_moves:
+                if not new_moves:
+                    continue
+
+                if is_check_call:
                     moves.extend(new_moves)
+                    continue
+
+                for new_move in new_moves:
+                    if not self.is_pinned(8 - int(new_move.split(",")[1][2]), self.lti[new_move.split(",")[1][1]]):
+                        moves.append(new_move)
 
         return moves
 
-    def generate_king_moves(self) -> list:
+    def generate_king_moves(self, is_check_call: bool = False) -> list:
         """
         Generate all possible king moves, use chess notation
         :return: A list of all possible king moves
         """
+
+        def check_king_safety(old_pos: tuple, new_pos: tuple) -> bool:
+            """
+            Check if the king is safe after a move
+            :param old_pos:
+            :param new_pos:
+            :return: True if king is safe, False otherwise
+            """
+            # Make certain king is not under check
+            # Move king to new position
+            piece = self.board[old_pos[0]][old_pos[1]]
+
+            self.board[old_pos[0]] = self.board[old_pos[0]][:old_pos[1]] + "1" + self.board[old_pos[0]][old_pos[1] + 1:]
+            self.board[new_pos[0]] = self.board[new_pos[0]][:new_pos[1]] + piece + self.board[new_pos[0]][
+                                                                                   new_pos[1] + 1:]
+            is_king_safe = True
+
+            if self.is_check():
+                is_king_safe = False
+
+            # Move king back to old position
+            self.board[old_pos[0]] = self.board[old_pos[0]][:old_pos[1]] + piece + self.board[old_pos[0]][
+                                                                                   old_pos[1] + 1:]
+            self.board[new_pos[0]] = self.board[new_pos[0]][:new_pos[1]] + "1" + self.board[new_pos[0]][new_pos[1] + 1:]
+
+            return is_king_safe
+
         turn = self.board[-5]
-        king_positions = []
+        king_position = None
         moves = []
         enemy_pieces = "rnbqkp" if turn == "w" else "RNBQKP"
 
@@ -294,42 +377,59 @@ class Board:
         for row in range(8):
             for col in range(8):
                 if turn == "w" and self.board[row][col] in "K":
-                    king_positions.append((row, col))
+                    king_position = (row, col)
+                    break
                 elif turn == "b" and self.board[row][col] in "k":
-                    king_positions.append((row, col))
+                    king_position = (row, col)
+                    break
 
         # Generate moves
-        for pos in king_positions:
-            row, col = pos
-            movements = [movement.move_top_right, movement.move_top_left, movement.move_bottom_right,
-                         movement.move_bottom_left, movement.move_up, movement.move_down, movement.move_right,
-                         movement.move_left]
+        row, col = king_position
+        movements = [movement.move_top_right, movement.move_top_left, movement.move_bottom_right,
+                     movement.move_bottom_left, movement.move_up, movement.move_down, movement.move_right,
+                     movement.move_left]
 
-            # Get king moves
-            for move in movements:
-                new_moves = move(self.board, row, col, enemy_pieces, 1)
-                # Make certain new move is not in check
-                # TODO: make sure the king is not in check after the move
-                if new_moves:
-                    moves.extend(new_moves)
+        # Get king moves
+        for move in movements:
+            new_moves = move(self.board, row, col, enemy_pieces, 1)
+            # Make certain new move is not in check
+            if not new_moves:
+                continue
+
+            if is_check_call:
+                moves.extend(new_moves)
+                continue
+
+            for new_move in new_moves:
+                new_row = 8 - int(new_move.split(",")[1][2])
+                new_col = self.lti[new_move.split(",")[1][1]]
+
+                if not check_king_safety((row, col), (new_row, new_col)):
+                    continue
+
+                moves.append(new_move)
 
             # add castling moves
             if turn == "w":
                 if "K" in self.board[-4] and self.board[7][5] == "1" and self.board[7][6] == "1":
-                    moves.append("Ke1,Kg1")
+                    if check_king_safety((row, col), (7, 6)):
+                        moves.append("Ke1,Kg1")
                 if "Q" in self.board[-4] and self.board[7][3] == "1" and self.board[7][2] == "1" and self.board[7][
                     1] == "1":
-                    moves.append("Ke1,Kc1")
+                    if check_king_safety((row, col), (7, 2)):
+                        moves.append("Ke1,Kc1")
             else:
                 if "k" in self.board[-4] and self.board[0][5] == "1" and self.board[0][6] == "1":
-                    moves.append("Ke8,Kg8")
+                    if check_king_safety((row, col), (0, 6)):
+                        moves.append("Ke8,Kg8")
                 if "q" in self.board[-4] and self.board[0][3] == "1" and self.board[0][2] == "1" and self.board[0][
                     1] == "1":
-                    moves.append("Ke8,Kc8")
+                    if check_king_safety((row, col), (0, 2)):
+                        moves.append("Ke8,Kc8")
 
         return moves
 
-    def generate_pawn_moves(self) -> list:
+    def generate_pawn_moves(self, is_check_call: bool = False) -> list:
         """
         Generate all possible pawn moves, use chess notation
         :return: A list of all possible pawn moves
@@ -352,7 +452,20 @@ class Board:
             row, col = pos
 
             # Get pawn moves
-            moves.extend(movement.move_pawn(self.board, row, col, enemy_pieces))
+            new_moves = movement.move_pawn(self.board, row, col, enemy_pieces)
+
+            if not new_moves:
+                continue
+
+            if is_check_call:
+                moves.extend(new_moves)
+                continue
+
+            for move in new_moves:
+                new_row = 8 - int(move.split(",")[1][1])
+                new_col = self.lti[move.split(",")[1][0]]
+                if not self.is_pinned(new_row, new_col):
+                    moves.append(move)
 
         return moves
 
@@ -381,20 +494,20 @@ class Board:
         # Generate all possible moves for the piece in old_pos
         piece = self.board[old_pos[0]][old_pos[1]]
 
-        if piece in "pP":
-            moves = self.generate_pawn_moves()
-        elif piece in "nN":
-            moves = self.generate_knight_moves()
-        elif piece in "bB":
-            moves = self.generate_bishop_moves()
-        elif piece in "rR":
-            moves = self.generate_rook_moves()
-        elif piece in "qQ":
-            moves = self.generate_queen_moves()
-        elif piece in "kK":
-            moves = self.generate_king_moves()
-        else:
-            return False
+        # if piece in "pP":
+        #     moves = self.generate_pawn_moves()
+        # elif piece in "nN":
+        #     moves = self.generate_knight_moves()
+        # elif piece in "bB":
+        #     moves = self.generate_bishop_moves()
+        # elif piece in "rR":
+        #     moves = self.generate_rook_moves()
+        # elif piece in "qQ":
+        #     moves = self.generate_queen_moves()
+        # elif piece in "kK":
+        #     moves = self.generate_king_moves()
+        # else:
+        #     return False
 
         # Move the piece momentarily and check if the king is in check
         if not is_check_call:
@@ -411,7 +524,7 @@ class Board:
                 return False
 
         # Check if the new position is in the list of moves
-        for move in moves:
+        for move in self.valid_moves:
             # Take only the destination of a move
             move = move.split(",")[1]
 
@@ -478,6 +591,9 @@ class Board:
             self.board[-4] = self.board[-4].replace("q", "")
 
     def move(self, old_pos: str, new_pos: str) -> None:
+        # Generate valid moves
+        self.valid_moves = self.generate_moves()
+
         # IF pawn move it does not have the piece as prefix
         if len(old_pos) == 3:
             o_p = (8 - int(old_pos[2]), self.lti[old_pos[1]])
@@ -611,6 +727,7 @@ class Engine:
     def move(self, old_pos: str, new_pos: str) -> None:
         self.board.move(old_pos, new_pos)
         print(self.board.board)
+        print(self.board.fen())
 
     def get_moves(self) -> List[str]:
         return self.board.generate_moves()
@@ -625,6 +742,27 @@ class Engine:
         # FOR DEBUGGING
         # self.moves.append(move)
         # print(self.moves)
+
+
+def fen_string_to_array(fen: str) -> List[str]:
+    # Convert FEN to array and make the numbers all 1
+    board = []
+    new_row = ""
+    for char in fen[:-2]:
+        if char == " " or char == "/":
+            board.append(new_row)
+            new_row = ""
+            continue
+
+        if char.isdigit():
+            new_row += "1" * int(char)
+        else:
+            new_row += char
+
+    board.append("0")
+    board.append("1")
+
+    return board
 
 
 def test_castling(engine: Engine):
@@ -678,15 +816,14 @@ def pretty_print_fen(board_state):
 
 
 if __name__ == "__main__":
-    # Moving n from Nb4 to Na2 possibly ate king
-    engine = Engine(['1r11k1n1', '111B1111', 'b111P111', 'p1111p1p', '1n111PNP', '1111111r', 'K1R11p11', '11111111', 'b', '', '-', '37', '94'])
+    fen_string = "rnb1kb1r/p2pq1pp/2p2n2/8/3P4/8/4K1PP/2B4R w kq - 3 7"
+    engine = Engine(fen_string_to_array(fen_string))
+    print(engine.board.valid_moves)
+    print(engine.board.valid_enemy_moves)
 
-    print(engine.board.fen())
+    # print(engine.board.valid_moves)
+
+    # print(engine.board.generate_king_moves())
+    # print(engine.board.is_check())
+
     # random_50_test()
-
-    # moves = [['Ng1', 'Nf3'], ['c7', 'c5'], ['c2', 'c4'], ['Nb8', 'Na6'], ['Qd1', 'Qc2'], ['Qd8', 'Qb6'], ['Qc2', 'Qd1'],
-    #          ['Na6', 'Nc7'], ['g2', 'g3'], ['h7', 'h6'], ['a2', 'a4'], ['Qb6', 'Qa6'], ['Bf1', 'Bg2'], ["d7", "d6"]]
-    #
-    # # Run all the moves in moves list
-    # for move in moves:
-    #     engine.move(move[0], move[1])
