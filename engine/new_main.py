@@ -3,6 +3,8 @@ import generate_moves
 import numpy as np
 import time
 
+# TODO: can_move maybe too slow, optimize it 6ms for 1 move
+
 
 def measure_time(func):
     def wrapper(*args, **kwargs):
@@ -36,7 +38,8 @@ def pos_from_chess_notation(notation: str) -> tuple:
 
 class Piece:
 
-    def __init__(self, position: str, color: str, piece_type: str) -> None:
+    def __init__(self, position: str, color: str, piece_type: str, moves: np.ndarray = np.array([]),
+                 first_move: bool = True, in_check: bool = False) -> None:
         """
         Initialize the piece
         :param position: Position in chess notation
@@ -94,6 +97,9 @@ class Board:
 
         # Fullmove number
         self.fullmove_number = 1
+
+        # Flag that is turned on when checking if the move is valid
+        self.checking_move_validity: bool = False
 
         # Create board
         self.create_board()
@@ -159,37 +165,59 @@ class Board:
         else:
             return False
 
-    def can_piece_move(self, old_pos, new_pos) -> bool:
+    def can_move(self, old_pos, new_pos) -> bool:
         """
-        Check if the piece can move to the new position, by checking if the new position creates check for itself or not
-        :param old_pos: Old position of the piece
-        :param new_pos: New position of the piece
-        :return: True if the piece can move to the new position else False
+        Checks from kings perspective whether it can hit enemies or not
+        :param old_pos: in chess notation
+        :param new_pos: in chess notation
+        :return:
         """
+        self.checking_move_validity = True
+
+        # Get the piece and potential capture
         old = pos_from_chess_notation(old_pos)
         new = pos_from_chess_notation(new_pos)
-
-        piece = self.board[old[0], old[1]]
+        piece: Piece = self.board[old[0], old[1]]
         potential_capture = self.board[new[0], new[1]]
 
         # Move the piece
         self.board[new[0], new[1]] = piece
         self.board[old[0], old[1]] = None
 
-        # Make sure king does not go into check
-        can_move = True
-        self.generate_piece_moves()
-        if self.is_check(piece.color):
-            can_move = False
+        # King info
+        if piece.piece_type != "K":
+            king_position = self.white_king if piece.color == "w" else self.black_king
+            king_pos = pos_from_chess_notation(king_position)
+        else:
+            king_position = new_pos
+            king_pos = new
 
-        # Move the piece back
-        self.board[old[0], old[1]] = piece
+        # Generate every movement from kings perspective
+        king_moves = generate_moves.generate_test(self.board[king_pos[0], king_pos[1]], self)
+
+        # Flag to know whether move is valid or not
+        flag = True
+
+        # Loop through the kings move and find enemies
+        for move in king_moves:
+            move = pos_from_chess_notation(move)
+            # If the move is not empty and the piece is of the opposite color and king position is in enemies moves
+            if self.board[move[0], move[1]] is not None and self.board[move[0], move[1]].color != piece.color:
+                # Generate move for that enemy piece
+                enemy_moves = generate_moves.generate(self.board[move[0], move[1]], self)
+
+                # If the king position is in the enemies moves, return True
+                if king_position in enemy_moves:
+                    flag = False
+                    break
+
+        # Revert the board back to original state
         self.board[new[0], new[1]] = potential_capture
+        self.board[old[0], old[1]] = piece
 
-        # Update the moves
-        self.generate_piece_moves()
+        self.checking_move_validity = False
 
-        return can_move
+        return flag
 
     def is_check(self, color) -> bool:
         """
@@ -213,7 +241,7 @@ class Board:
                 if self.board[row, col].piece_type == "K":
                     continue
 
-                # If the king is in the moves of the piece, set the king's in_check to True
+                # If the kings position is in the moves of the piece, set the king's in_check to True
                 if king_notation in self.board[row, col].moves:
                     self.board[king_pos[0], king_pos[1]].in_check = True
                     return True
@@ -273,7 +301,7 @@ class Board:
         # Generate the moves for all the pieces
         self.generate_piece_moves()
 
-        # Update check for the opposite color
+        # Update check for both kings
         colors = ["w", "b"]
 
         for color in colors:
@@ -347,18 +375,14 @@ def main():
     board = Board("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
 
     # Move white piece
-    board.move("e2", "e4")
-
-    board.move("d8", "e3")
-
-    board.move("f1", "e2")
-
-    board.move("e3", "e2")
+    board.move("d8", "d2")
 
     # Print the moves for all the pieces
     print_moves_for_all_pieces(board)
 
-    print(board.board[7, 4].in_check)
+    # print(board.is_check("w"))
+
+    # print(board.can_move("d1", "d2"))
 
 
 if __name__ == "__main__":

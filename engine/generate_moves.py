@@ -19,17 +19,22 @@ class Movement:
 
         for i in range(1, distance):
             # Check if the position is valid
-            if position[0] - i >= 0:
-                # Check if the square is empty
-                if self.board[position[0] - i, position[1]] is None:
-                    moves = np.append(moves, f"{chr(position[1] + 97)}{8 - (position[0] - i)}")
-                # Check if the square is occupied by an enemy piece
-                elif self.board[position[0] - i, position[1]].color != color:
-                    moves = np.append(moves, f"{chr(position[1] + 97)}{8 - (position[0] - i)}")
-                    break
-                else:
-                    break
-            else:
+            if position[0] - i < 0:
+                break
+
+            is_enemy = self.board[position[0] - i, position[1]] and self.board[position[0] - i, position[1]].color != color
+
+            # If square is not empty or enemy piece, break
+            if not (self.board[position[0] - i, position[1]] is None or is_enemy):
+                break
+
+            if self.object.checking_move_validity:
+                moves = np.append(moves, f"{chr(position[1] + 97)}{8 - (position[0] - i)}")
+            elif self.object.can_move(self.piece.position, f"{chr(position[1] + 97)}{8 - (position[0] - i)}"):
+                moves = np.append(moves, f"{chr(position[1] + 97)}{8 - (position[0] - i)}")
+
+            # Break if enemy piece
+            if is_enemy:
                 break
 
         return moves
@@ -43,17 +48,22 @@ class Movement:
 
         for i in range(1, distance):
             # Check if the position is valid
-            if position[0] + i < 8:
-                # Check if the square is empty
-                if self.board[position[0] + i, position[1]] is None:
-                    moves = np.append(moves, f"{chr(position[1] + 97)}{8 - (position[0] + i)}")
-                # Check if the square is occupied by an enemy piece
-                elif self.board[position[0] + i, position[1]].color != color:
-                    moves = np.append(moves, f"{chr(position[1] + 97)}{8 - (position[0] + i)}")
-                    break
-                else:
-                    break
-            else:
+            if position[0] + i >= 8:
+                break
+
+            is_enemy = self.board[position[0] + i, position[1]] and self.board[position[0] + i, position[1]].color != color
+
+            # If square is not empty or enemy piece, break
+            if not (self.board[position[0] + i, position[1]] is None or is_enemy):
+                break
+
+            if self.object.checking_move_validity:
+                moves = np.append(moves, f"{chr(position[1] + 97)}{8 - (position[0] + i)}")
+            elif self.object.can_move(self.piece.position, f"{chr(position[1] + 97)}{8 - (position[0] + i)}"):
+                moves = np.append(moves, f"{chr(position[1] + 97)}{8 - (position[0] + i)}")
+
+            # Break if enemy piece
+            if is_enemy:
                 break
 
         return moves
@@ -67,17 +77,22 @@ class Movement:
 
         for i in range(1, distance):
             # Check if the position is valid
-            if position[1] + i < 8:
-                # Check if the square is empty
-                if self.board[position[0], position[1] + i] is None:
-                    moves = np.append(moves, f"{chr(position[1] + 97 + i)}{8 - position[0]}")
-                # Check if the square is occupied by an enemy piece
-                elif self.board[position[0], position[1] + i].color != color:
-                    moves = np.append(moves, f"{chr(position[1] + 97 + i)}{8 - position[0]}")
-                    break
-                else:
-                    break
-            else:
+            if position[1] + i >= 8:
+                break
+
+            is_enemy = self.board[position[0], position[1] + i] and self.board[position[0], position[1] + i].color != color
+
+            # If square is not empty or enemy piece, break
+            if not (self.board[position[0], position[1] + i] is None or is_enemy):
+                break
+
+            if self.object.checking_move_validity:
+                moves = np.append(moves, f"{chr(position[1] + 97 + i)}{8 - position[0]}")
+            elif self.object.can_move(self.piece.position, f"{chr(position[1] + 97 + i)}{8 - position[0]}"):
+                moves = np.append(moves, f"{chr(position[1] + 97 + i)}{8 - position[0]}")
+
+            # Break if enemy piece
+            if is_enemy:
                 break
 
         return moves
@@ -91,17 +106,22 @@ class Movement:
 
         for i in range(1, distance):
             # Check if the position is valid
-            if position[1] - i >= 0:
-                # Check if the square is empty
-                if self.board[position[0], position[1] - i] is None:
-                    moves = np.append(moves, f"{chr(position[1] + 97 - i)}{8 - position[0]}")
-                # Check if the square is occupied by an enemy piece
-                elif self.board[position[0], position[1] - i].color != color:
-                    moves = np.append(moves, f"{chr(position[1] + 97 - i)}{8 - position[0]}")
-                    break
-                else:
-                    break
-            else:
+            if position[1] - i < 0:
+                break
+
+            is_enemy = self.board[position[0], position[1] - i] and self.board[position[0], position[1] - i].color != color
+
+            # If square is not empty or enemy piece, break
+            if not (self.board[position[0], position[1] - i] is None or is_enemy):
+                break
+
+            if self.object.checking_move_validity:
+                moves = np.append(moves, f"{chr(position[1] + 97 - i)}{8 - position[0]}")
+            elif self.object.can_move(self.piece.position, f"{chr(position[1] + 97 - i)}{8 - position[0]}"):
+                moves = np.append(moves, f"{chr(position[1] + 97 - i)}{8 - position[0]}")
+
+            # Break if enemy piece
+            if is_enemy:
                 break
 
         return moves
@@ -115,17 +135,22 @@ class Movement:
 
         for i in range(1, distance):
             # Check if the position is valid
-            if position[0] - i >= 0 and position[1] + i < 8:
-                # Check if the square is empty
-                if self.board[position[0] - i, position[1] + i] is None:
-                    moves = np.append(moves, f"{chr(position[1] + 97 + i)}{8 - (position[0] - i)}")
-                # Check if the square is occupied by an enemy piece
-                elif self.board[position[0] - i, position[1] + i].color != color:
-                    moves = np.append(moves, f"{chr(position[1] + 97 + i)}{8 - (position[0] - i)}")
-                    break
-                else:
-                    break
-            else:
+            if position[0] - i < 0 or position[1] + i >= 8:
+                break
+
+            is_enemy = self.board[position[0] - i, position[1] + i] and self.board[position[0] - i, position[1] + i].color != color
+
+            # If square is not empty or enemy piece, break
+            if not (self.board[position[0] - i, position[1] + i] is None or is_enemy):
+                break
+
+            if self.object.checking_move_validity:
+                moves = np.append(moves, f"{chr(position[1] + 97 + i)}{8 - (position[0] - i)}")
+            elif self.object.can_move(self.piece.position, f"{chr(position[1] + 97 + i)}{8 - (position[0] - i)}"):
+                moves = np.append(moves, f"{chr(position[1] + 97 + i)}{8 - (position[0] - i)}")
+
+            # Break if enemy piece
+            if is_enemy:
                 break
 
         return moves
@@ -139,17 +164,22 @@ class Movement:
 
         for i in range(1, distance):
             # Check if the position is valid
-            if position[0] - i >= 0 and position[1] - i >= 0:
-                # Check if the square is empty
-                if self.board[position[0] - i, position[1] - i] is None:
-                    moves = np.append(moves, f"{chr(position[1] + 97 - i)}{8 - (position[0] - i)}")
-                # Check if the square is occupied by an enemy piece
-                elif self.board[position[0] - i, position[1] - i].color != color:
-                    moves = np.append(moves, f"{chr(position[1] + 97 - i)}{8 - (position[0] - i)}")
-                    break
-                else:
-                    break
-            else:
+            if position[0] - i < 0 or position[1] - i < 0:
+                break
+
+            is_enemy = self.board[position[0] - i, position[1] - i] and self.board[position[0] - i, position[1] - i].color != color
+
+            # If square is not empty or enemy piece, break
+            if not (self.board[position[0] - i, position[1] - i] is None or is_enemy):
+                break
+
+            if self.object.checking_move_validity:
+                moves = np.append(moves, f"{chr(position[1] + 97 - i)}{8 - (position[0] - i)}")
+            elif self.object.can_move(self.piece.position, f"{chr(position[1] + 97 - i)}{8 - (position[0] - i)}"):
+                moves = np.append(moves, f"{chr(position[1] + 97 - i)}{8 - (position[0] - i)}")
+
+            # Break if enemy piece
+            if is_enemy:
                 break
 
         return moves
@@ -163,17 +193,22 @@ class Movement:
 
         for i in range(1, distance):
             # Check if the position is valid
-            if position[0] + i < 8 and position[1] + i < 8:
-                # Check if the square is empty
-                if self.board[position[0] + i, position[1] + i] is None:
-                    moves = np.append(moves, f"{chr(position[1] + 97 + i)}{8 - (position[0] + i)}")
-                # Check if the square is occupied by an enemy piece
-                elif self.board[position[0] + i, position[1] + i].color != color:
-                    moves = np.append(moves, f"{chr(position[1] + 97 + i)}{8 - (position[0] + i)}")
-                    break
-                else:
-                    break
-            else:
+            if position[0] + i >= 8 or position[1] + i >= 8:
+                break
+
+            is_enemy = self.board[position[0] + i, position[1] + i] and self.board[position[0] + i, position[1] + i].color != color
+
+            # If square is not empty or enemy piece, break
+            if not (self.board[position[0] + i, position[1] + i] is None or is_enemy):
+                break
+
+            if self.object.checking_move_validity:
+                moves = np.append(moves, f"{chr(position[1] + 97 + i)}{8 - (position[0] + i)}")
+            elif self.object.can_move(self.piece.position, f"{chr(position[1] + 97 + i)}{8 - (position[0] + i)}"):
+                moves = np.append(moves, f"{chr(position[1] + 97 + i)}{8 - (position[0] + i)}")
+
+            # Break if enemy piece
+            if is_enemy:
                 break
 
         return moves
@@ -187,17 +222,22 @@ class Movement:
 
         for i in range(1, distance):
             # Check if the position is valid
-            if position[0] + i < 8 and position[1] - i >= 0:
-                # Check if the square is empty
-                if self.board[position[0] + i, position[1] - i] is None:
-                    moves = np.append(moves, f"{chr(position[1] + 97 - i)}{8 - (position[0] + i)}")
-                # Check if the square is occupied by an enemy piece
-                elif self.board[position[0] + i, position[1] - i].color != color:
-                    moves = np.append(moves, f"{chr(position[1] + 97 - i)}{8 - (position[0] + i)}")
-                    break
-                else:
-                    break
-            else:
+            if position[0] + i >= 8 or position[1] - i < 0:
+                break
+
+            is_enemy = self.board[position[0] + i, position[1] - i] and self.board[position[0] + i, position[1] - i].color != color
+
+            # If square is not empty or enemy piece, break
+            if not (self.board[position[0] + i, position[1] - i] is None or is_enemy):
+                break
+
+            if self.object.checking_move_validity:
+                moves = np.append(moves, f"{chr(position[1] + 97 - i)}{8 - (position[0] + i)}")
+            elif self.object.can_move(self.piece.position, f"{chr(position[1] + 97 - i)}{8 - (position[0] + i)}"):
+                moves = np.append(moves, f"{chr(position[1] + 97 - i)}{8 - (position[0] + i)}")
+
+            # Break if enemy piece
+            if is_enemy:
                 break
 
         return moves
@@ -224,11 +264,11 @@ class Movement:
         for move in possible_moves:
             # Check if the move is valid
             if 0 <= move[0] < 8 and 0 <= move[1] < 8:
-                # Check if the square is empty
-                if self.board[move[0], move[1]] is None:
+                is_enemy = self.board[move[0], move[1]] and self.board[move[0], move[1]].color != color
+
+                if self.object.checking_move_validity:
                     moves = np.append(moves, f"{chr(move[1] + 97)}{8 - move[0]}")
-                # Check if the square is occupied by an enemy piece
-                elif self.board[move[0], move[1]].color != color:
+                elif self.object.can_move(self.piece.position, f"{chr(move[1] + 97)}{8 - move[0]}"):
                     moves = np.append(moves, f"{chr(move[1] + 97)}{8 - move[0]}")
 
         return moves
@@ -329,6 +369,23 @@ def generate(piece: Piece, board) -> np.ndarray:
             moves = movement_object.generate_king_movement()
 
     return moves
+
+
+def generate_test(piece: Piece, board) -> np.ndarray:
+    # TODO: finish this function
+    movement_object = Movement(piece, board)
+    moves = np.array([])
+
+    new_moves = movement_object.generate_queen_movement()
+    if new_moves.size > 0:
+        moves = np.append(moves, new_moves[-1])
+    new_moves = movement_object.generate_knight_movement()
+    if new_moves.size > 0:
+        moves = np.append(moves, new_moves[-1])
+
+    return moves
+
+
 
 
 def main():
