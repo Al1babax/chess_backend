@@ -5,9 +5,10 @@ import numpy as np
 
 class Movement:
     # Class that look piece movement to all directions
-    def __init__(self, piece: Piece, board: np.ndarray) -> None:
-        self.piece = piece
-        self.board = board
+    def __init__(self, piece: Piece, board: Board) -> None:
+        self.piece: Piece = piece
+        self.board: np.ndarray = board.board
+        self.object: Board = board
 
     def move_up(self, distance: int = 8) -> np.ndarray:
         moves = np.array([], dtype=str)
@@ -302,7 +303,7 @@ class Movement:
         return moves
 
 
-def generate(piece: Piece, board: np.ndarray) -> np.ndarray:
+def generate(piece: Piece, board) -> np.ndarray:
     """
     Generate the movement of the piece
     :param piece: Piece object

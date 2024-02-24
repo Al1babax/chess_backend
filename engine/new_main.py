@@ -59,9 +59,6 @@ class Piece:
         # If the piece is captured
         self.captured: bool = False
 
-        # If the piece is pinned
-        self.is_pinned: bool = False
-
         # If it is the first move of the piece
         self.first_move: bool = True
 
@@ -144,7 +141,7 @@ class Board:
             for col in range(8):
                 if self.board[row, col] is not None:
                     # Generate the moves for the piece
-                    self.board[row, col].moves = generate_moves.generate(self.board[row, col], self.board)
+                    self.board[row, col].moves = generate_moves.generate(self.board[row, col], self)
 
     def is_valid(self, old, new) -> bool:
         """
@@ -162,7 +159,39 @@ class Board:
         else:
             return False
 
-    def update_check(self, color) -> None:
+    def can_piece_move(self, old_pos, new_pos) -> bool:
+        """
+        Check if the piece can move to the new position, by checking if the new position creates check for itself or not
+        :param old_pos: Old position of the piece
+        :param new_pos: New position of the piece
+        :return: True if the piece can move to the new position else False
+        """
+        old = pos_from_chess_notation(old_pos)
+        new = pos_from_chess_notation(new_pos)
+
+        piece = self.board[old[0], old[1]]
+        potential_capture = self.board[new[0], new[1]]
+
+        # Move the piece
+        self.board[new[0], new[1]] = piece
+        self.board[old[0], old[1]] = None
+
+        # Make sure king does not go into check
+        can_move = True
+        self.generate_piece_moves()
+        if self.is_check(piece.color):
+            can_move = False
+
+        # Move the piece back
+        self.board[old[0], old[1]] = piece
+        self.board[new[0], new[1]] = potential_capture
+
+        # Update the moves
+        self.generate_piece_moves()
+
+        return can_move
+
+    def is_check(self, color) -> bool:
         """
         Check if the color's king is in check by checking if opposite color's pieces have the king in their moves
         :return:
@@ -187,16 +216,51 @@ class Board:
                 # If the king is in the moves of the piece, set the king's in_check to True
                 if king_notation in self.board[row, col].moves:
                     self.board[king_pos[0], king_pos[1]].in_check = True
-                    return
+                    return True
 
-    def update_pin(self) -> None:
+        return False
+
+    def is_protecting_king(self, pos: str, color: str) -> bool:
         """
-        Update the pin for all the pieces
+        Check if the current piece is protecting king from check
         Check this by looping over all the pieces but the king, temporarily removing the king from the board
         and checking if the king goes into check
+        :param pos: Position of the piece
+        :param color: Color of the piece
         :return:
         """
-        pass
+        # Get the position in chess notation
+        pos = pos_from_chess_notation(pos)
+
+        # Get the piece
+        piece = self.board[pos[0], pos[1]]
+
+        # Check if the piece is None
+        if piece is None:
+            return False
+
+        # If the piece is a king, return
+        if piece.piece_type == "K":
+            return False
+
+        # Temporarily remove the piece from the board
+        self.board[pos[0], pos[1]] = None
+
+        # Update the moves
+        self.generate_piece_moves()
+
+        # Check if the king is in check
+        pinned_flag = False
+        if self.is_check(color):
+            # Add piece back to board and set is_pinned to True
+            pinned_flag = True
+
+        self.board[pos[0], pos[1]] = piece
+
+        # Update the moves
+        self.generate_piece_moves()
+
+        return pinned_flag
 
     @measure_time
     def update(self, piece_type: str, was_capture: bool) -> None:
@@ -210,7 +274,15 @@ class Board:
         self.generate_piece_moves()
 
         # Update check for the opposite color
-        self.update_check("w" if self.turn == "b" else "b")
+        colors = ["w", "b"]
+
+        for color in colors:
+            king_pos = pos_from_chess_notation(self.white_king if color == "w" else self.black_king)
+
+            if self.is_check(color):
+                self.board[king_pos[0], king_pos[1]].in_check = True
+            else:
+                self.board[king_pos[0], king_pos[1]].in_check = False
 
         # Update clocks
         # If black moved, update fullmove number
@@ -278,6 +350,10 @@ def main():
     board.move("e2", "e4")
 
     board.move("d8", "e3")
+
+    board.move("f1", "e2")
+
+    board.move("e3", "e2")
 
     # Print the moves for all the pieces
     print_moves_for_all_pieces(board)
