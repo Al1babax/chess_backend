@@ -1,3 +1,3 @@
 """
-Draw board using pygame
+Draw board using some graphics library
 """
