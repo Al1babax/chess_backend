@@ -71,8 +71,6 @@ class Piece:
 
 class Board:
     def __init__(self, fen_string: str) -> None:
-        # TODO: cannot have custom fens atm than default
-
         # Fen string to initialize the board
         self.fen_string = fen_string
 
@@ -80,23 +78,23 @@ class Board:
         self.board = np.empty((8, 8), dtype=object)
 
         # Kings
-        self.white_king = "e1"
-        self.black_king = "e8"
+        self.white_king = None
+        self.black_king = None
 
         # Turn
-        self.turn = "w"
+        self.turn = self.fen_string.split(" ")[1]
 
         # Castling rights
-        self.castling_rights = "KQkq"
+        self.castling_rights = self.fen_string.split(" ")[2]
 
         # En passant square
-        self.en_passant_square = None
+        self.en_passant_square = None if self.fen_string.split(" ")[3] == "-" else self.fen_string.split(" ")[3]
 
         # Halfmove clock
-        self.halfmove_clock = 0
+        self.halfmove_clock = int(self.fen_string.split(" ")[4])
 
         # Fullmove number
-        self.fullmove_number = 1
+        self.fullmove_number = int(self.fen_string.split(" ")[5])
 
         # Flag that is turned on when checking if the move is valid
         self.checking_move_validity: bool = False
@@ -114,15 +112,20 @@ class Board:
 
         for i, row in enumerate(rows):
             new_row = np.empty(8, dtype=object)
-            for k, piece in enumerate(row):
+            col_index = 0
+            real_index = 0
+            while col_index < 8:
+                piece = row[real_index]
                 if piece.isdigit():
                     for _ in range(int(piece)):
-                        new_row[k] = None
+                        new_row[col_index] = None
+                        col_index += 1
 
+                    real_index += 1
                     continue
 
                 # Construct chess notation
-                position = chr(97 + k) + str(8 - i)
+                position = chr(97 + col_index) + str(8 - i)
 
                 # Construct the piece color
                 if piece.isupper():
@@ -134,7 +137,17 @@ class Board:
                 piece_type = piece.upper()
 
                 # Create the piece
-                new_row[k] = Piece(position, color, piece_type)
+                new_row[col_index] = Piece(position, color, piece_type)
+
+                # If piece was king update its position
+                if piece_type == "K":
+                    if color == "w":
+                        self.white_king = position
+                    else:
+                        self.black_king = position
+
+                col_index += 1
+                real_index += 1
 
             self.board[i] = new_row
 
@@ -172,6 +185,8 @@ class Board:
         :param new_pos: in chess notation
         :return:
         """
+        # TODO: fix for king, because it thinks it can move to check position
+        # TODO: Also does not work for some pawns for some reason
         self.checking_move_validity = True
 
         # Get the piece and potential capture
@@ -247,6 +262,60 @@ class Board:
                     return True
 
         return False
+
+    def is_checkmate(self, color) -> bool:
+        """
+        Check if the color is in checkmate
+        :param color: Color of the king
+        :return: True if the color is in checkmate else False
+        """
+        # If the king is not in check, return False
+        if not self.is_check(color):
+            return False
+
+        # Loop through all the pieces
+        for row in range(8):
+            for col in range(8):
+                # If the piece is None, continue
+                if self.board[row, col] is None:
+                    continue
+
+                # If the piece is not of the same color, continue
+                if self.board[row, col].color != color:
+                    continue
+
+                # If the piece has moves, return False
+                if len(self.board[row, col].moves) > 0:
+                    return False
+
+        return True
+
+    def is_stalemate(self, color) -> bool:
+        """
+        Check if the color is in stalemate
+        :param color: Color of the king
+        :return: True if the color is in stalemate else False
+        """
+        # If the king is in check, return False
+        if self.is_check(color):
+            return False
+
+        # Loop through all the pieces
+        for row in range(8):
+            for col in range(8):
+                # If the piece is None, continue
+                if self.board[row, col] is None:
+                    continue
+
+                # If the piece is not of the same color, continue
+                if self.board[row, col].color != color:
+                    continue
+
+                # If the piece has moves, return False
+                if len(self.board[row, col].moves) > 0:
+                    return False
+
+        return True
 
     @measure_time
     def update(self, piece_type: str, was_capture: bool) -> None:
@@ -350,21 +419,38 @@ def print_moves_for_all_pieces(board) -> None:
                 print(f"Moves: {board.board[row, col].moves}")
 
 
+def print_board(board) -> None:
+    for row in range(8):
+        for col in range(8):
+            if board.board[row, col] is not None:
+                print(f"{board.board[row, col].piece_type.upper() if board.board[row, col].color == 'w' else board.board[row, col].piece_type.lower():^4}", end=" ")
+            else:
+                print("None", end=" ")
+        print()
+
+
 def main():
     # Create the board
-    board = Board("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+    board = Board("rnb1kbnr/pppppppp/8/8/N1B1q3/Q2P4/2PP1PPP/RNBPKP1R b KQkq - 0 1")
 
     # Move white piece
-    board.move("f1", "d4")
-    board.move("g1", "d5")
-    board.move("b1", "d3")
-    board.move("c1", "d6")
+    # board.move("e2", "d3")
+    # board.move("d8", "e4")
+    # board.move("f1", "c4")
+    # board.move("d1", "a3")
+    # board.move("g1", "a4")
+    # board.move("a2", "d1")
+    # board.move("b2", "f1")
 
-    # Do kingside castling
-    board.move("e1", "c1")
+    # FEN for this situation rnb1kbnr/pppppppp/8/8/N1B1q3/Q2P4/2PP1PPP/RNBPKP1R b KQkq - 0 1
 
     # Print the moves for all the pieces
     print_moves_for_all_pieces(board)
+
+    # Print the board
+    print_board(board)
+
+    print(board.is_check("w"))
 
 
 

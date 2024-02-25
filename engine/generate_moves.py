@@ -442,24 +442,24 @@ class Movement:
 
         # For kingside castling, make sure squares inbetween are empty
         if color == "w" and "K" in rights:
-            if self.board[7, 5] is None or self.board[7, 6] is None:
+            if self.board[7, 5] is None and self.board[7, 6] is None:
                 # Make sure kingside rook has not moved
                 if self.board[7, 7] and self.board[7, 7].piece_type == "R" and self.board[7, 7].first_move:
                     moves = np.append(moves, "g1")
         if color == "b" and "k" in rights:
-            if self.board[0, 5] is None or self.board[0, 6] is None:
+            if self.board[0, 5] is None and self.board[0, 6] is None:
                 # Make sure kingside rook has not moved
                 if self.board[0, 7] and self.board[0, 7].piece_type == "R" and self.board[0, 7].first_move:
                     moves = np.append(moves, "g8")
 
         # For queenside castling, make sure squares inbetween are empty
         if color == "w" and "Q" in rights:
-            if self.board[7, 1] is None or self.board[7, 2] is None or self.board[7, 3] is None:
+            if self.board[7, 1] is None and self.board[7, 2] is None and self.board[7, 3] is None:
                 # Make sure queenside rook has not moved
                 if self.board[7, 0] and self.board[7, 0].piece_type == "R" and self.board[7, 0].first_move:
                     moves = np.append(moves, "c1")
         if color == "b" and "q" in rights:
-            if self.board[0, 1] is None or self.board[0, 2] is None or self.board[0, 3] is None:
+            if self.board[0, 1] is None and self.board[0, 2] is None and self.board[0, 3] is None:
                 # Make sure queenside rook has not moved
                 if self.board[0, 0] and self.board[0, 0].piece_type == "R" and self.board[0, 0].first_move:
                     moves = np.append(moves, "c8")
