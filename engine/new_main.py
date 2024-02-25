@@ -406,6 +406,14 @@ class Board:
                 self.board[new[0], 5].position = "f1" if self.board[new[0], 5].color == "w" else "f8"
                 self.board[new[0], 5].first_move = False
 
+            # Remove castling rights for the color
+            if self.board[new[0], new[1]].color == "w":
+                self.castling_rights = self.castling_rights.replace("K", "")
+                self.castling_rights = self.castling_rights.replace("Q", "")
+            else:
+                self.castling_rights = self.castling_rights.replace("k", "")
+                self.castling_rights = self.castling_rights.replace("q", "")
+
         # Update the board
         self.update(self.board[new[0], new[1]].piece_type, was_capture)
 
