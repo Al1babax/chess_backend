@@ -22,7 +22,8 @@ class Movement:
             if position[0] - i < 0:
                 break
 
-            is_enemy = self.board[position[0] - i, position[1]] and self.board[position[0] - i, position[1]].color != color
+            is_enemy = self.board[position[0] - i, position[1]] and self.board[
+                position[0] - i, position[1]].color != color
 
             # If square is not empty or enemy piece, break
             if not (self.board[position[0] - i, position[1]] is None or is_enemy):
@@ -51,7 +52,8 @@ class Movement:
             if position[0] + i >= 8:
                 break
 
-            is_enemy = self.board[position[0] + i, position[1]] and self.board[position[0] + i, position[1]].color != color
+            is_enemy = self.board[position[0] + i, position[1]] and self.board[
+                position[0] + i, position[1]].color != color
 
             # If square is not empty or enemy piece, break
             if not (self.board[position[0] + i, position[1]] is None or is_enemy):
@@ -80,7 +82,8 @@ class Movement:
             if position[1] + i >= 8:
                 break
 
-            is_enemy = self.board[position[0], position[1] + i] and self.board[position[0], position[1] + i].color != color
+            is_enemy = self.board[position[0], position[1] + i] and self.board[
+                position[0], position[1] + i].color != color
 
             # If square is not empty or enemy piece, break
             if not (self.board[position[0], position[1] + i] is None or is_enemy):
@@ -109,7 +112,8 @@ class Movement:
             if position[1] - i < 0:
                 break
 
-            is_enemy = self.board[position[0], position[1] - i] and self.board[position[0], position[1] - i].color != color
+            is_enemy = self.board[position[0], position[1] - i] and self.board[
+                position[0], position[1] - i].color != color
 
             # If square is not empty or enemy piece, break
             if not (self.board[position[0], position[1] - i] is None or is_enemy):
@@ -138,7 +142,8 @@ class Movement:
             if position[0] - i < 0 or position[1] + i >= 8:
                 break
 
-            is_enemy = self.board[position[0] - i, position[1] + i] and self.board[position[0] - i, position[1] + i].color != color
+            is_enemy = self.board[position[0] - i, position[1] + i] and self.board[
+                position[0] - i, position[1] + i].color != color
 
             # If square is not empty or enemy piece, break
             if not (self.board[position[0] - i, position[1] + i] is None or is_enemy):
@@ -167,7 +172,8 @@ class Movement:
             if position[0] - i < 0 or position[1] - i < 0:
                 break
 
-            is_enemy = self.board[position[0] - i, position[1] - i] and self.board[position[0] - i, position[1] - i].color != color
+            is_enemy = self.board[position[0] - i, position[1] - i] and self.board[
+                position[0] - i, position[1] - i].color != color
 
             # If square is not empty or enemy piece, break
             if not (self.board[position[0] - i, position[1] - i] is None or is_enemy):
@@ -196,7 +202,8 @@ class Movement:
             if position[0] + i >= 8 or position[1] + i >= 8:
                 break
 
-            is_enemy = self.board[position[0] + i, position[1] + i] and self.board[position[0] + i, position[1] + i].color != color
+            is_enemy = self.board[position[0] + i, position[1] + i] and self.board[
+                position[0] + i, position[1] + i].color != color
 
             # If square is not empty or enemy piece, break
             if not (self.board[position[0] + i, position[1] + i] is None or is_enemy):
@@ -225,7 +232,8 @@ class Movement:
             if position[0] + i >= 8 or position[1] - i < 0:
                 break
 
-            is_enemy = self.board[position[0] + i, position[1] - i] and self.board[position[0] + i, position[1] - i].color != color
+            is_enemy = self.board[position[0] + i, position[1] - i] and self.board[
+                position[0] + i, position[1] - i].color != color
 
             # If square is not empty or enemy piece, break
             if not (self.board[position[0] + i, position[1] - i] is None or is_enemy):
@@ -294,20 +302,60 @@ class Movement:
                         moves = np.append(moves, f"{chr(new_pos[1] + 97)}{8 - new_pos[0]}")
 
         # Also check for en passant
-        # 1. Get en passant square
-        # 2. Check if en passant square is empty and if this piece can "capture" it, meaning it is diagonally adjacent forward
-
-        # e_passant_square = self.object.en_passant_square
-        #
-        # if e_passant_square:
-        #     e_passant_pos = pos_from_chess_notation(e_passant_square)
-        #     if position[0] == e_passant_pos[0] and abs(position[1] - e_passant_pos[1]) == 1:
-        #         if self.object.checking_move_validity:
-        #             moves = np.append(moves, e_passant_square)
-        #         elif self.object.can_move(self.piece.position, e_passant_square):
-        #             moves = np.append(moves, e_passant_square)
+        moves = np.append(moves, self.generate_en_passant(position))
 
         return moves
+
+    def generate_en_passant(self, position: Tuple[int, int]) -> np.ndarray:
+        """
+        Generate en passant movement
+        :param position: row, col of the piece
+        :return:
+        """
+        # CHeck that the en passant square is not None
+        if not self.object.en_passant_square:
+            return np.array([], dtype=str)
+
+        # Get en passant square position
+        en_passant_square = pos_from_chess_notation(self.object.en_passant_square)
+
+        # Check if en passant square is occupied
+        if self.board[en_passant_square[0], en_passant_square[1]]:
+            return np.array([], dtype=str)
+
+        # Check if piece is not even 1 row away from the en passant square
+        if abs(position[0] - en_passant_square[0]) != 1:
+            return np.array([], dtype=str)
+
+        # Check if piece is not even 1 col away from the en passant square
+        if abs(position[1] - en_passant_square[1]) != 1:
+            return np.array([], dtype=str)
+
+        # If white turn, check if the en passant square is diagonal to the piece
+        move = np.array([], dtype=str)
+        if self.piece.color == "w":
+            # Check if top left
+            if position[0] - 1 == en_passant_square[0] and position[1] - 1 == en_passant_square[1]:
+                move = np.append(move, f"{chr(en_passant_square[1] + 97)}{8 - en_passant_square[0]}")
+            # Check if top right
+            elif position[0] - 1 == en_passant_square[0] and position[1] + 1 == en_passant_square[1]:
+                move = np.append(move, f"{chr(en_passant_square[1] + 97)}{8 - en_passant_square[0]}")
+        # If black turn, check if the en passant square is diagonal to the piece
+        else:
+            # Check if bottom left
+            if position[0] + 1 == en_passant_square[0] and position[1] - 1 == en_passant_square[1]:
+                move = np.append(move, f"{chr(en_passant_square[1] + 97)}{8 - en_passant_square[0]}")
+            # Check if bottom right
+            elif position[0] + 1 == en_passant_square[0] and position[1] + 1 == en_passant_square[1]:
+                move = np.append(move, f"{chr(en_passant_square[1] + 97)}{8 - en_passant_square[0]}")
+
+        # Make certain the move is valid too
+        if self.object.checking_move_validity:
+            return move
+        elif self.object.can_move(self.piece.position, move[0]):
+            return move
+        else:
+            return np.array([], dtype=str)
 
     def generate_pawn_movement(self) -> np.ndarray:
         distance = 3 if self.piece.first_move else 2
@@ -372,7 +420,59 @@ class Movement:
         for direction in directions:
             moves = np.append(moves, direction(2))
 
+        # Generate castling movement
+        moves = np.append(moves, self.castling())
+
         return moves
+
+    def castling(self) -> np.ndarray:
+        moves = np.array([], dtype=str)
+        color: str = self.piece.color
+        rights: str = self.object.castling_rights
+
+        # Check if the king has moved
+        if not self.piece.first_move:
+            return moves
+
+        # Make sure kings has some castling rights
+        if color == "w" and "K" not in rights and "Q" not in rights:
+            return moves
+        if color == "b" and "k" not in rights and "q" not in rights:
+            return moves
+
+        # For kingside castling, make sure squares inbetween are empty
+        if color == "w" and "K" in rights:
+            if self.board[7, 5] is None or self.board[7, 6] is None:
+                # Make sure kingside rook has not moved
+                if self.board[7, 7] and self.board[7, 7].piece_type == "R" and self.board[7, 7].first_move:
+                    moves = np.append(moves, "g1")
+        if color == "b" and "k" in rights:
+            if self.board[0, 5] is None or self.board[0, 6] is None:
+                # Make sure kingside rook has not moved
+                if self.board[0, 7] and self.board[0, 7].piece_type == "R" and self.board[0, 7].first_move:
+                    moves = np.append(moves, "g8")
+
+        # For queenside castling, make sure squares inbetween are empty
+        if color == "w" and "Q" in rights:
+            if self.board[7, 1] is None or self.board[7, 2] is None or self.board[7, 3] is None:
+                # Make sure queenside rook has not moved
+                if self.board[7, 0] and self.board[7, 0].piece_type == "R" and self.board[7, 0].first_move:
+                    moves = np.append(moves, "c1")
+        if color == "b" and "q" in rights:
+            if self.board[0, 1] is None or self.board[0, 2] is None or self.board[0, 3] is None:
+                # Make sure queenside rook has not moved
+                if self.board[0, 0] and self.board[0, 0].piece_type == "R" and self.board[0, 0].first_move:
+                    moves = np.append(moves, "c8")
+
+        # Loop over these moves and validate them
+        valid_moves = np.array([], dtype=str)
+        for move in moves:
+            if self.object.checking_move_validity:
+                valid_moves = np.append(valid_moves, move)
+            elif self.object.can_move(self.piece.position, move):
+                valid_moves = np.append(valid_moves, move)
+
+        return valid_moves
 
 
 def generate(piece: Piece, board) -> np.ndarray:
@@ -416,8 +516,6 @@ def generate_test(piece: Piece, board) -> np.ndarray:
         moves = np.append(moves, new_moves[-1])
 
     return moves
-
-
 
 
 def main():

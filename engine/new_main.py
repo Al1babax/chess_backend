@@ -90,7 +90,7 @@ class Board:
         self.castling_rights = "KQkq"
 
         # En passant square
-        self.en_passant_square = "-"
+        self.en_passant_square = None
 
         # Halfmove clock
         self.halfmove_clock = 0
@@ -248,48 +248,6 @@ class Board:
 
         return False
 
-    def is_protecting_king(self, pos: str, color: str) -> bool:
-        """
-        Check if the current piece is protecting king from check
-        Check this by looping over all the pieces but the king, temporarily removing the king from the board
-        and checking if the king goes into check
-        :param pos: Position of the piece
-        :param color: Color of the piece
-        :return:
-        """
-        # Get the position in chess notation
-        pos = pos_from_chess_notation(pos)
-
-        # Get the piece
-        piece = self.board[pos[0], pos[1]]
-
-        # Check if the piece is None
-        if piece is None:
-            return False
-
-        # If the piece is a king, return
-        if piece.piece_type == "K":
-            return False
-
-        # Temporarily remove the piece from the board
-        self.board[pos[0], pos[1]] = None
-
-        # Update the moves
-        self.generate_piece_moves()
-
-        # Check if the king is in check
-        pinned_flag = False
-        if self.is_check(color):
-            # Add piece back to board and set is_pinned to True
-            pinned_flag = True
-
-        self.board[pos[0], pos[1]] = piece
-
-        # Update the moves
-        self.generate_piece_moves()
-
-        return pinned_flag
-
     @measure_time
     def update(self, piece_type: str, was_capture: bool) -> None:
         """
@@ -361,7 +319,23 @@ class Board:
         if self.board[new[0], new[1]].piece_type == "P" and abs(old[0] - new[0]) == 2:
             self.en_passant_square = f"{chr(97 + new[1])}{8 - new[0] - 1}" if self.board[new[0], new[1]].color == "w" else f"{chr(97 + new[1])}{8 - new[0] + 1}"
         else:
-            self.en_passant_square = "-"
+            self.en_passant_square = None
+
+        # Handle castling, move the rook also
+        if self.board[new[0], new[1]].piece_type == "K" and abs(old[1] - new[1]) == 2:
+            # Queen side
+            if new[1] == 2:
+                self.board[new[0], 3] = self.board[new[0], 0]
+                self.board[new[0], 0] = None
+                # Update rook position and make first move False
+                self.board[new[0], 3].position = "d1" if self.board[new[0], 3].color == "w" else "d8"
+                self.board[new[0], 3].first_move = False
+            else:
+                self.board[new[0], 5] = self.board[new[0], 7]
+                self.board[new[0], 7] = None
+                # Update rook position and make first move False
+                self.board[new[0], 5].position = "f1" if self.board[new[0], 5].color == "w" else "f8"
+                self.board[new[0], 5].first_move = False
 
         # Update the board
         self.update(self.board[new[0], new[1]].piece_type, was_capture)
@@ -381,16 +355,17 @@ def main():
     board = Board("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
 
     # Move white piece
-    board.move("e2", "e4")
-    board.move("d7", "d5")
+    board.move("f1", "d4")
+    board.move("g1", "d5")
+    board.move("b1", "d3")
+    board.move("c1", "d6")
+
+    # Do kingside castling
+    board.move("e1", "c1")
 
     # Print the moves for all the pieces
     print_moves_for_all_pieces(board)
-    # print(board.en_passant_square)
 
-    # print(board.is_check("w"))
-
-    # print(board.can_move("d1", "d2"))
 
 
 if __name__ == "__main__":
