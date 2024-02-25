@@ -357,6 +357,12 @@ class Board:
             else:
                 self.black_king = f"{chr(97 + new[1])}{8 - new[0]}"
 
+        # If the move wes a pawn, it was a double move, update en passant square
+        if self.board[new[0], new[1]].piece_type == "P" and abs(old[0] - new[0]) == 2:
+            self.en_passant_square = f"{chr(97 + new[1])}{8 - new[0] - 1}" if self.board[new[0], new[1]].color == "w" else f"{chr(97 + new[1])}{8 - new[0] + 1}"
+        else:
+            self.en_passant_square = "-"
+
         # Update the board
         self.update(self.board[new[0], new[1]].piece_type, was_capture)
 
@@ -375,10 +381,12 @@ def main():
     board = Board("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
 
     # Move white piece
-    board.move("d8", "d2")
+    board.move("e2", "e4")
+    board.move("d7", "d5")
 
     # Print the moves for all the pieces
     print_moves_for_all_pieces(board)
+    # print(board.en_passant_square)
 
     # print(board.is_check("w"))
 

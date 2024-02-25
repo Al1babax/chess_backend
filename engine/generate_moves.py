@@ -247,7 +247,6 @@ class Movement:
 
         # Get the position of the piece
         position: Tuple[int, int] = pos_from_chess_notation(self.piece.position)
-        color: str = self.piece.color
 
         # Generate all the possible moves
         possible_moves = [
@@ -264,8 +263,6 @@ class Movement:
         for move in possible_moves:
             # Check if the move is valid
             if 0 <= move[0] < 8 and 0 <= move[1] < 8:
-                is_enemy = self.board[move[0], move[1]] and self.board[move[0], move[1]].color != color
-
                 if self.object.checking_move_validity:
                     moves = np.append(moves, f"{chr(move[1] + 97)}{8 - move[0]}")
                 elif self.object.can_move(self.piece.position, f"{chr(move[1] + 97)}{8 - move[0]}"):
@@ -280,16 +277,51 @@ class Movement:
         """
         moves = np.array([], dtype=str)
 
+        # Offset for captures
+        row_offset = -1 if self.piece.color == "w" else 1
+        col_offset = [-1, 1]
+
+        # Get the position of the piece
+        position: Tuple[int, int] = pos_from_chess_notation(self.piece.position)
+
+        for col in col_offset:
+            new_pos = (position[0] + row_offset, position[1] + col)
+            if 0 <= new_pos[0] < 8 and 0 <= new_pos[1] < 8:
+                if self.board[new_pos[0], new_pos[1]] and self.board[new_pos[0], new_pos[1]].color != self.piece.color:
+                    if self.object.checking_move_validity:
+                        moves = np.append(moves, f"{chr(new_pos[1] + 97)}{8 - new_pos[0]}")
+                    elif self.object.can_move(self.piece.position, f"{chr(new_pos[1] + 97)}{8 - new_pos[0]}"):
+                        moves = np.append(moves, f"{chr(new_pos[1] + 97)}{8 - new_pos[0]}")
+
+        # Also check for en passant
+        # 1. Get en passant square
+        # 2. Check if en passant square is empty and if this piece can "capture" it, meaning it is diagonally adjacent forward
+
+        # e_passant_square = self.object.en_passant_square
+        #
+        # if e_passant_square:
+        #     e_passant_pos = pos_from_chess_notation(e_passant_square)
+        #     if position[0] == e_passant_pos[0] and abs(position[1] - e_passant_pos[1]) == 1:
+        #         if self.object.checking_move_validity:
+        #             moves = np.append(moves, e_passant_square)
+        #         elif self.object.can_move(self.piece.position, e_passant_square):
+        #             moves = np.append(moves, e_passant_square)
+
         return moves
 
     def generate_pawn_movement(self) -> np.ndarray:
         distance = 3 if self.piece.first_move else 2
 
+        moves = np.array([], dtype=str)
+
         # Generate forward movement, one or two squares
         if self.piece.color == "w":
-            moves = self.move_up(distance)
+            moves = np.append(moves, self.move_up(distance))
         else:
-            moves = self.move_down(distance)
+            moves = np.append(moves, self.move_down(distance))
+
+        # Generate capture movement
+        moves = np.append(moves, self.pawn_capture())
 
         return moves
 
