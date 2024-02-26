@@ -106,6 +106,9 @@ class Board:
         # Generate moves
         self.generate_piece_moves()
 
+        # Board history
+        self.board_history = np.array([self.fen_string])
+
     def generate_fen_string(self) -> None:
         """
         Generate fen string from the board
@@ -394,6 +397,9 @@ class Board:
         # Generate fen string
         self.generate_fen_string()
 
+        # Update board history
+        self.board_history = np.append(self.board_history, self.fen_string.split(" ")[0])
+
     def pawn_promotion(self, position: str, piece_type: str = "Q") -> None:
         """
         Promote the pawn to a piece
@@ -493,6 +499,18 @@ class Game:
         self.black_move_history = np.array([])
         self.game_over = False
 
+    def is_threefold_repetition(self) -> bool:
+        """
+        Check if the game is over by threefold repetition
+        :return: True if the game is over else False
+        """
+        unique, counts = np.unique(self.board.board_history, return_counts=True)
+        for i in range(len(unique)):
+            if counts[i] == 3:
+                return True
+
+        return False
+
     def move(self, old_pos, new_pos) -> None:
         self.board.move(old_pos, new_pos)
 
@@ -511,6 +529,9 @@ class Game:
         elif self.board.is_stalemate("w") or self.board.is_stalemate("b"):
             self.game_over = True
             print("Stalemate")
+        elif self.is_threefold_repetition():
+            self.game_over = True
+            print("Threefold repetition")
 
 
 class Engine:
@@ -565,6 +586,16 @@ def print_board(board) -> None:
         print()
 
 
+def test():
+    board = Board("6q1/8/2b2k2/8/5n2/7K/8/8 w - - 58 149")
+    print(f"White check: {board.is_check('w')}")
+    print(f"Black check: {board.is_check('b')}")
+    print(f"White stalemate: {board.is_stalemate('w')}")
+    print(f"Black stalemate: {board.is_stalemate('b')}")
+    print(f"White checkmate: {board.is_checkmate('w')}")
+    print(f"Black checkmate: {board.is_checkmate('b')}")
+
+
 def main():
     # Create game
     game = Game()
@@ -579,6 +610,8 @@ def main():
         print_board(game.board)
         print()
         engine.random_move(game)
+
+    # test()
 
 
 if __name__ == "__main__":
