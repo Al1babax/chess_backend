@@ -364,6 +364,9 @@ class Movement:
             elif position[0] + 1 == en_passant_square[0] and position[1] + 1 == en_passant_square[1]:
                 move = np.append(move, f"{chr(en_passant_square[1] + 97)}{8 - en_passant_square[0]}")
 
+        if move.size == 0:
+            return move
+
         # Make certain the move is valid too
         if self.object.checking_move_validity:
             return move

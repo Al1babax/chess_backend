@@ -3,6 +3,7 @@ import generate_moves
 import numpy as np
 import time
 
+
 # TODO: can_move maybe too slow, optimize it 6-10ms for 1 move
 
 
@@ -104,6 +105,35 @@ class Board:
 
         # Generate moves
         self.generate_piece_moves()
+
+    def generate_fen_string(self) -> None:
+        """
+        Generate fen string from the board
+        :return:
+        """
+        fen_string = ""
+        for row in range(8):
+            empty = 0
+            for col in range(8):
+                if self.board[row, col] is None:
+                    empty += 1
+                else:
+                    if empty != 0:
+                        fen_string += str(empty)
+                        empty = 0
+                    fen_string += self.board[row, col].piece_type if self.board[row, col].color == "w" else self.board[
+                        row, col].piece_type.lower()
+
+            if empty != 0:
+                fen_string += str(empty)
+            if row != 7:
+                fen_string += "/"
+
+        fen_string += f" {self.turn} {self.castling_rights} " \
+                      f"{'-' if self.en_passant_square is None else self.en_passant_square}" \
+                      f" {self.halfmove_clock} {self.fullmove_number}"
+
+        self.fen_string = fen_string
 
     def create_board(self) -> None:
         # Create the board so that white piece are first in the matrix
@@ -361,6 +391,19 @@ class Board:
         # Change the turn
         self.turn = "w" if self.turn == "b" else "b"
 
+        # Generate fen string
+        self.generate_fen_string()
+
+    def pawn_promotion(self, position: str, piece_type: str = "Q") -> None:
+        """
+        Promote the pawn to a piece
+        :param position: Position of the pawn
+        :param piece_type: Type of the piece to promote to, default to queen
+        :return:
+        """
+        pos = pos_from_chess_notation(position)
+        self.board[pos[0], pos[1]].piece_type = piece_type
+
     def move(self, old_pos, new_pos) -> None:
         """
         Move the piece
@@ -394,7 +437,8 @@ class Board:
 
         # If the move wes a pawn, it was a double move, update en passant square
         if self.board[new[0], new[1]].piece_type == "P" and abs(old[0] - new[0]) == 2:
-            self.en_passant_square = f"{chr(97 + new[1])}{8 - new[0] - 1}" if self.board[new[0], new[1]].color == "w" else f"{chr(97 + new[1])}{8 - new[0] + 1}"
+            self.en_passant_square = f"{chr(97 + new[1])}{8 - new[0] - 1}" if self.board[new[0], new[
+                1]].color == "w" else f"{chr(97 + new[1])}{8 - new[0] + 1}"
         else:
             self.en_passant_square = None
 
@@ -414,16 +458,90 @@ class Board:
                 self.board[new[0], 5].position = "f1" if self.board[new[0], 5].color == "w" else "f8"
                 self.board[new[0], 5].first_move = False
 
-            # Remove castling rights for the color
+        # Remove castling rights if king or rook moved
+        if self.board[new[0], new[1]].piece_type == "K" or self.board[new[0], new[1]].piece_type == "R":
             if self.board[new[0], new[1]].color == "w":
-                self.castling_rights = self.castling_rights.replace("K", "")
-                self.castling_rights = self.castling_rights.replace("Q", "")
+                if self.board[new[0], new[1]].piece_type == "K":
+                    self.castling_rights = self.castling_rights.replace("K", "")
+                    self.castling_rights = self.castling_rights.replace("Q", "")
+                elif new[1] == 0:
+                    self.castling_rights = self.castling_rights.replace("Q", "")
+                elif new[1] == 7:
+                    self.castling_rights = self.castling_rights.replace("K", "")
             else:
-                self.castling_rights = self.castling_rights.replace("k", "")
-                self.castling_rights = self.castling_rights.replace("q", "")
+                if self.board[new[0], new[1]].piece_type == "K":
+                    self.castling_rights = self.castling_rights.replace("k", "")
+                    self.castling_rights = self.castling_rights.replace("q", "")
+                elif new[1] == 0:
+                    self.castling_rights = self.castling_rights.replace("q", "")
+                elif new[1] == 7:
+                    self.castling_rights = self.castling_rights.replace("k", "")
+
+        # If pawn reached promotion, promote it to queen
+        if self.board[new[0], new[1]].piece_type == "P" and (new[0] == 0 or new[0] == 7):
+            self.pawn_promotion(new_pos)
 
         # Update the board
         self.update(self.board[new[0], new[1]].piece_type, was_capture)
+
+
+class Game:
+
+    def __init__(self) -> None:
+        self.board = Board("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+        self.white_move_history = np.array([])
+        self.black_move_history = np.array([])
+        self.game_over = False
+
+    def move(self, old_pos, new_pos) -> None:
+        self.board.move(old_pos, new_pos)
+
+        if self.board.turn == "w":
+            self.white_move_history = np.append(self.white_move_history, f"{old_pos} {new_pos}")
+        else:
+            self.black_move_history = np.append(self.black_move_history, f"{old_pos} {new_pos}")
+
+        # Check if the game is over
+        if self.board.is_checkmate("w"):
+            self.game_over = True
+            print("Black wins")
+        elif self.board.is_checkmate("b"):
+            self.game_over = True
+            print("White wins")
+        elif self.board.is_stalemate("w") or self.board.is_stalemate("b"):
+            self.game_over = True
+            print("Stalemate")
+
+
+class Engine:
+
+    def random_move(self, game: Game) -> None:
+        """
+        Select a random piece for a color and select random move from its moves, if it does not have any moves, select another piece
+        :param game: Game object
+        :return: Tuple of old position and new position
+        """
+        # Get turn
+        turn = game.board.turn
+
+        # Get all the pieces of the color
+        pieces = []
+        for row in range(8):
+            for col in range(8):
+                if game.board.board[row, col] is not None and game.board.board[row, col].color == turn:
+                    pieces.append(game.board.board[row, col])
+
+        # Select random piece
+        while True:
+            piece = np.random.choice(pieces)
+            if len(piece.moves) > 0:
+                break
+
+        # Select random move
+        move = np.random.choice(piece.moves)
+
+        # Perform the move
+        game.move(piece.position, move)
 
 
 def print_moves_for_all_pieces(board) -> None:
@@ -439,41 +557,28 @@ def print_board(board) -> None:
     for row in range(8):
         for col in range(8):
             if board.board[row, col] is not None:
-                print(f"{board.board[row, col].piece_type.upper() if board.board[row, col].color == 'w' else board.board[row, col].piece_type.lower():^4}", end=" ")
+                print(
+                    f"{board.board[row, col].piece_type.upper() if board.board[row, col].color == 'w' else board.board[row, col].piece_type.lower():^4}",
+                    end=" ")
             else:
                 print("None", end=" ")
         print()
 
 
 def main():
-    # Create the board
-    board = Board("rnb1kbn1/1ppppppp/8/q7/P5r1/P7/P3q3/P6K b q - 0 1")
-    # board = Board("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+    # Create game
+    game = Game()
 
-    # Move white piece
-    # board.move("e2", "d3")
-    # board.move("d8", "e4")
-    # board.move("f1", "c4")
-    # board.move("d1", "a3")
-    # board.move("g1", "a4")
-    # board.move("a2", "d1")
-    # board.move("b2", "f1")
+    # Create engine
+    engine = Engine()
 
-    # FEN for this situation rnb1kbnr/pppppppp/8/8/N1B1q3/Q2P4/2PP1PPP/RNBPKP1R b KQkq - 0 1
-
-    # Print the moves for all the pieces
-    print_moves_for_all_pieces(board)
-
-    # Print the board
-    print_board(board)
-
-    # Print if king is in check, stalemate or checkmate
-    print(f"White king in check: {board.is_check('w')}")
-    print(f"Black king in check: {board.is_check('b')}")
-    print(f"White king in checkmate: {board.is_checkmate('w')}")
-    print(f"Black king in checkmate: {board.is_checkmate('b')}")
-    print(f"White king in stalemate: {board.is_stalemate('w')}")
-    print(f"Black king in stalemate: {board.is_stalemate('b')}")
+    # Do random moves until game over and print the board between every move
+    while not game.game_over:
+        print(f"Turn: {game.board.fullmove_number}")
+        print(f"Fen: {game.board.fen_string}")
+        print_board(game.board)
+        print()
+        engine.random_move(game)
 
 
 if __name__ == "__main__":
