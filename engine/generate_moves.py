@@ -9,6 +9,7 @@ class Movement:
         self.piece: Piece = piece
         self.board: np.ndarray = board.board
         self.object: Board = board
+        self.is_pawn = self.piece.piece_type == "P"
 
     def move_up(self, distance: int = 8) -> np.ndarray:
         moves = np.array([], dtype=str)
@@ -24,6 +25,10 @@ class Movement:
 
             is_enemy = self.board[position[0] - i, position[1]] and self.board[
                 position[0] - i, position[1]].color != color
+
+            # For pawn if square has enemy break
+            if self.is_pawn and is_enemy:
+                break
 
             # If square is not empty or enemy piece, break
             if not (self.board[position[0] - i, position[1]] is None or is_enemy):
@@ -54,6 +59,10 @@ class Movement:
 
             is_enemy = self.board[position[0] + i, position[1]] and self.board[
                 position[0] + i, position[1]].color != color
+
+            # For pawn if square has enemy break
+            if self.is_pawn and is_enemy:
+                break
 
             # If square is not empty or enemy piece, break
             if not (self.board[position[0] + i, position[1]] is None or is_enemy):
@@ -270,11 +279,17 @@ class Movement:
 
         for move in possible_moves:
             # Check if the move is valid
-            if 0 <= move[0] < 8 and 0 <= move[1] < 8:
-                if self.object.checking_move_validity:
-                    moves = np.append(moves, f"{chr(move[1] + 97)}{8 - move[0]}")
-                elif self.object.can_move(self.piece.position, f"{chr(move[1] + 97)}{8 - move[0]}"):
-                    moves = np.append(moves, f"{chr(move[1] + 97)}{8 - move[0]}")
+            if not (0 <= move[0] < 8 and 0 <= move[1] < 8):
+                continue
+
+            # Check if square is friendly
+            if self.board[move[0], move[1]] and self.board[move[0], move[1]].color == self.piece.color:
+                continue
+
+            if self.object.checking_move_validity:
+                moves = np.append(moves, f"{chr(move[1] + 97)}{8 - move[0]}")
+            elif self.object.can_move(self.piece.position, f"{chr(move[1] + 97)}{8 - move[0]}"):
+                moves = np.append(moves, f"{chr(move[1] + 97)}{8 - move[0]}")
 
         return moves
 
@@ -475,7 +490,7 @@ class Movement:
         return valid_moves
 
 
-def generate(piece: Piece, board) -> np.ndarray:
+def generate(piece: Piece, board: Board) -> np.ndarray:
     """
     Generate the movement of the piece
     :param piece: Piece object
@@ -510,10 +525,11 @@ def generate_test(piece: Piece, board) -> np.ndarray:
 
     new_moves = movement_object.generate_queen_movement()
     if new_moves.size > 0:
-        moves = np.append(moves, new_moves[-1])
+        moves = np.append(moves, new_moves)
+
     new_moves = movement_object.generate_knight_movement()
     if new_moves.size > 0:
-        moves = np.append(moves, new_moves[-1])
+        moves = np.append(moves, new_moves)
 
     return moves
 

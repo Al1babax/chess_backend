@@ -3,7 +3,7 @@ import generate_moves
 import numpy as np
 import time
 
-# TODO: can_move maybe too slow, optimize it 6ms for 1 move
+# TODO: can_move maybe too slow, optimize it 6-10ms for 1 move
 
 
 def measure_time(func):
@@ -77,7 +77,7 @@ class Board:
         # Make numpy array of 8x8
         self.board = np.empty((8, 8), dtype=object)
 
-        # Kings
+        # Kings positions
         self.white_king = None
         self.black_king = None
 
@@ -185,8 +185,6 @@ class Board:
         :param new_pos: in chess notation
         :return:
         """
-        # TODO: fix for king, because it thinks it can move to check position
-        # TODO: Also does not work for some pawns for some reason
         self.checking_move_validity = True
 
         # Get the piece and potential capture
@@ -206,6 +204,7 @@ class Board:
         else:
             king_position = new_pos
             king_pos = new
+            self.board[new[0], new[1]].position = new_pos
 
         # Generate every movement from kings perspective
         king_moves = generate_moves.generate_test(self.board[king_pos[0], king_pos[1]], self)
@@ -229,6 +228,15 @@ class Board:
         # Revert the board back to original state
         self.board[new[0], new[1]] = potential_capture
         self.board[old[0], old[1]] = piece
+
+        # Rever king position
+        if piece.piece_type == "K":
+            if piece.color == "w":
+                self.white_king = old_pos
+                self.board[old[0], old[1]].position = old_pos
+            else:
+                self.black_king = old_pos
+                self.board[old[0], old[1]].position = old_pos
 
         self.checking_move_validity = False
 
@@ -439,7 +447,8 @@ def print_board(board) -> None:
 
 def main():
     # Create the board
-    board = Board("rnb1kbnr/pppppppp/8/8/N1B1q3/Q2P4/2PP1PPP/RNBPKP1R b KQkq - 0 1")
+    board = Board("rnb1kbn1/1ppppppp/8/q7/P5r1/P7/P3q3/P6K b q - 0 1")
+    # board = Board("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
 
     # Move white piece
     # board.move("e2", "d3")
@@ -458,8 +467,13 @@ def main():
     # Print the board
     print_board(board)
 
-    print(board.is_check("w"))
-
+    # Print if king is in check, stalemate or checkmate
+    print(f"White king in check: {board.is_check('w')}")
+    print(f"Black king in check: {board.is_check('b')}")
+    print(f"White king in checkmate: {board.is_checkmate('w')}")
+    print(f"Black king in checkmate: {board.is_checkmate('b')}")
+    print(f"White king in stalemate: {board.is_stalemate('w')}")
+    print(f"Black king in stalemate: {board.is_stalemate('b')}")
 
 
 if __name__ == "__main__":
