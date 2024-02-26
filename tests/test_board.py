@@ -1,5 +1,4 @@
-import pytest
-from engine import main
+from old import main
 
 
 def move_pieces_for_castling(engine):

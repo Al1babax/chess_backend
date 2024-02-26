@@ -1,5 +1,5 @@
 from typing import List, Optional, Tuple
-from new_main import Piece, Board, pos_from_chess_notation
+from main import Piece, Board, pos_from_chess_notation
 import numpy as np
 
 
