@@ -1,11 +1,14 @@
-from typing import List, Optional
 import generate_moves
-import numpy as np
 import time
 import multiprocessing
+import cProfile
+import pstats
+
+from engine.chess_engine import Engine
 
 
 # TODO: can_move maybe too slow, optimize it 6-10ms for 1 move
+# TODO: un-do move for engine to more efficient so no need to create new board every time
 
 
 def measure_time(func):
@@ -40,7 +43,7 @@ def pos_from_chess_notation(notation: str) -> tuple:
 
 class Piece:
 
-    def __init__(self, position: str, color: str, piece_type: str, moves: np.ndarray = np.array([]),
+    def __init__(self, position: str, color: str, piece_type: str, moves=None,
                  first_move: bool = True, in_check: bool = False) -> None:
         """
         Initialize the piece
@@ -49,6 +52,9 @@ class Piece:
         :param piece_type: Type of the piece, either "P", "N", "B", "R", "Q", "K
         :param moves: List of possible moves of the piece in chess notation
         """
+        if moves is None:
+            moves = []
+
         # Position of the piece using chess notation
         self.position: str = position
 
@@ -59,7 +65,7 @@ class Piece:
         self.piece_type: str = piece_type
 
         # Possible moves of the piece
-        self.moves: np.ndarray = np.array([])
+        self.moves: list = []
 
         # If the piece is captured
         self.captured: bool = False
@@ -76,8 +82,8 @@ class Board:
         # Fen string to initialize the board
         self.fen_string = fen_string
 
-        # Make numpy array of 8x8
-        self.board = np.empty((8, 8), dtype=object)
+        # Make array of 8x8
+        self.board = [[None for _ in range(8)] for _ in range(8)]
 
         # Kings positions
         self.white_king = None
@@ -109,7 +115,7 @@ class Board:
         self.generate_piece_moves("b")
 
         # Board history
-        self.board_history = np.array([self.fen_string])
+        self.board_history = [self.fen_string]
 
     def generate_fen_string(self) -> None:
         """
@@ -120,14 +126,15 @@ class Board:
         for row in range(8):
             empty = 0
             for col in range(8):
-                if self.board[row, col] is None:
+                if self.board[row][col] is None:
                     empty += 1
                 else:
                     if empty != 0:
                         fen_string += str(empty)
                         empty = 0
-                    fen_string += self.board[row, col].piece_type if self.board[row, col].color == "w" else self.board[
-                        row, col].piece_type.lower()
+
+                    fen_string += self.board[row][col].piece_type if self.board[row][col].color == "w" else \
+                        self.board[row][col].piece_type.lower()
 
             if empty != 0:
                 fen_string += str(empty)
@@ -146,7 +153,7 @@ class Board:
         rows = fen_piece.split("/")
 
         for i, row in enumerate(rows):
-            new_row = np.empty(8, dtype=object)
+            new_row = [None for _ in range(8)]
             col_index = 0
             real_index = 0
             while col_index < 8:
@@ -193,10 +200,10 @@ class Board:
         """
         for row in range(8):
             for col in range(8):
-                if self.board[row, col] is None or self.board[row, col].color != color:
+                if self.board[row][col] is None or self.board[row][col].color != color:
                     continue
 
-                self.board[row, col].moves = generate_moves.generate(self.board[row, col], self)
+                self.board[row][col].moves = generate_moves.generate(self.board[row][col], self)
 
     def soft_generate_piece_moves(self, color: str) -> None:
         """
@@ -207,10 +214,10 @@ class Board:
 
         for row in range(8):
             for col in range(8):
-                if self.board[row, col] is None or self.board[row, col].color != color:
+                if self.board[row][col] is None or self.board[row][col].color != color:
                     continue
 
-                self.board[row, col].moves = generate_moves.generate_test(self.board[row, col], self)
+                self.board[row][col].moves = generate_moves.generate_test(self.board[row][col], self)
 
         self.checking_move_validity = False
 
@@ -242,12 +249,12 @@ class Board:
         # Get the piece and potential capture
         old = pos_from_chess_notation(old_pos)
         new = pos_from_chess_notation(new_pos)
-        piece: Piece = self.board[old[0], old[1]]
-        potential_capture = self.board[new[0], new[1]]
+        piece: Piece = self.board[old[0]][old[1]]
+        potential_capture = self.board[new[0]][new[1]]
 
         # Move the piece
-        self.board[new[0], new[1]] = piece
-        self.board[old[0], old[1]] = None
+        self.board[new[0]][new[1]] = piece
+        self.board[old[0]][old[1]] = None
 
         # King info
         if piece.piece_type != "K":
@@ -256,10 +263,10 @@ class Board:
         else:
             king_position = new_pos
             king_pos = new
-            self.board[new[0], new[1]].position = new_pos
+            self.board[new[0]][new[1]].position = new_pos
 
         # Generate every movement from kings perspective
-        king_moves = generate_moves.generate_test(self.board[king_pos[0], king_pos[1]], self)
+        king_moves = generate_moves.generate_test(self.board[king_pos[0]][king_pos[1]], self)
 
         # Flag to know whether move is valid or not
         flag = True
@@ -268,9 +275,9 @@ class Board:
         for move in king_moves:
             move = pos_from_chess_notation(move)
             # If the move is not empty and the piece is of the opposite color and king position is in enemies moves
-            if self.board[move[0], move[1]] is not None and self.board[move[0], move[1]].color != piece.color:
+            if self.board[move[0]][move[1]] is not None and self.board[move[0]][move[1]].color != piece.color:
                 # Generate move for that enemy piece
-                enemy_moves = generate_moves.generate(self.board[move[0], move[1]], self)
+                enemy_moves = generate_moves.generate(self.board[move[0]][move[1]], self)
 
                 # If the king position is in the enemies moves, return True
                 if king_position in enemy_moves:
@@ -278,17 +285,17 @@ class Board:
                     break
 
         # Revert the board back to original state
-        self.board[new[0], new[1]] = potential_capture
-        self.board[old[0], old[1]] = piece
+        self.board[new[0]][new[1]] = potential_capture
+        self.board[old[0]][old[1]] = piece
 
         # Rever king position
         if piece.piece_type == "K":
             if piece.color == "w":
                 self.white_king = old_pos
-                self.board[old[0], old[1]].position = old_pos
+                self.board[old[0]][old[1]].position = old_pos
             else:
                 self.black_king = old_pos
-                self.board[old[0], old[1]].position = old_pos
+                self.board[old[0]][old[1]].position = old_pos
 
         self.checking_move_validity = False
 
@@ -305,20 +312,20 @@ class Board:
         for row in range(8):
             for col in range(8):
                 # If the piece is None, continue
-                if self.board[row, col] is None:
+                if self.board[row][col] is None:
                     continue
 
                 # If the piece is of the same color, continue
-                if self.board[row, col].color == color:
+                if self.board[row][col].color == color:
                     continue
 
                 # If the piece is a king, continue
-                if self.board[row, col].piece_type == "K":
+                if self.board[row][col].piece_type == "K":
                     continue
 
                 # If the kings position is in the moves of the piece, set the king's in_check to True
-                if king_notation in self.board[row, col].moves:
-                    self.board[king_pos[0], king_pos[1]].in_check = True
+                if king_notation in self.board[row][col].moves:
+                    self.board[king_pos[0]][king_pos[1]].in_check = True
                     return True
 
         return False
@@ -337,15 +344,15 @@ class Board:
         for row in range(8):
             for col in range(8):
                 # If the piece is None, continue
-                if self.board[row, col] is None:
+                if self.board[row][col] is None:
                     continue
 
                 # If the piece is not of the same color, continue
-                if self.board[row, col].color != color:
+                if self.board[row][col].color != color:
                     continue
 
                 # If the piece has moves, return False
-                if len(self.board[row, col].moves) > 0:
+                if len(self.board[row][col].moves) > 0:
                     return False
 
         return True
@@ -364,15 +371,15 @@ class Board:
         for row in range(8):
             for col in range(8):
                 # If the piece is None, continue
-                if self.board[row, col] is None:
+                if self.board[row][col] is None:
                     continue
 
                 # If the piece is not of the same color, continue
-                if self.board[row, col].color != color:
+                if self.board[row][col].color != color:
                     continue
 
                 # If the piece has moves, return False
-                if len(self.board[row, col].moves) > 0:
+                if len(self.board[row][col].moves) > 0:
                     return False
 
         return True
@@ -395,9 +402,9 @@ class Board:
             king_pos = pos_from_chess_notation(self.white_king if color == "w" else self.black_king)
 
             if self.is_check(color):
-                self.board[king_pos[0], king_pos[1]].in_check = True
+                self.board[king_pos[0]][king_pos[1]].in_check = True
             else:
-                self.board[king_pos[0], king_pos[1]].in_check = False
+                self.board[king_pos[0]][king_pos[1]].in_check = False
 
         # Update clocks
         # If black moved, update fullmove number
@@ -417,7 +424,7 @@ class Board:
         self.generate_fen_string()
 
         # Update board history
-        self.board_history = np.append(self.board_history, self.fen_string.split(" ")[0])
+        self.board_history.append(self.fen_string)
 
     def pawn_promotion(self, position: str, piece_type: str = "Q") -> None:
         """
@@ -427,7 +434,18 @@ class Board:
         :return:
         """
         pos = pos_from_chess_notation(position)
-        self.board[pos[0], pos[1]].piece_type = piece_type
+        self.board[pos[0]][pos[1]].piece_type = piece_type
+
+    def un_do_move(self) -> None:
+        """
+        Pop the previous fen string and reconstruct the board
+        :return:
+        """
+        # Get previous fen string
+        previous_fen = self.board_history.pop()
+
+        # Update the board
+        self.__init__(previous_fen)
 
     def move(self, old_pos, new_pos) -> None:
         """
@@ -441,52 +459,52 @@ class Board:
         new = pos_from_chess_notation(new_pos)
 
         # Check if the move was capture
-        was_capture = True if self.board[new[0], new[1]] is not None else False
+        was_capture = True if self.board[new[0]][new[1]] is not None else False
 
         # Move the piece
-        self.board[new[0], new[1]] = self.board[old[0], old[1]]
-        self.board[old[0], old[1]] = None
+        self.board[new[0]][new[1]] = self.board[old[0]][old[1]]
+        self.board[old[0]][old[1]] = None
 
         # Update the position of the piece
-        self.board[new[0], new[1]].position = new_pos if len(new_pos) == 2 else new_pos[1:]
+        self.board[new[0]][new[1]].position = new_pos if len(new_pos) == 2 else new_pos[1:]
 
         # Make first move False, specifically for pawns
-        self.board[new[0], new[1]].first_move = False
+        self.board[new[0]][new[1]].first_move = False
 
         # If the piece is a king, update the king position
-        if self.board[new[0], new[1]].piece_type == "K":
-            if self.board[new[0], new[1]].color == "w":
+        if self.board[new[0]][new[1]].piece_type == "K":
+            if self.board[new[0]][new[1]].color == "w":
                 self.white_king = f"{chr(97 + new[1])}{8 - new[0]}"
             else:
                 self.black_king = f"{chr(97 + new[1])}{8 - new[0]}"
 
         # If the move wes a pawn, it was a double move, update en passant square
-        if self.board[new[0], new[1]].piece_type == "P" and abs(old[0] - new[0]) == 2:
-            self.en_passant_square = f"{chr(97 + new[1])}{8 - new[0] - 1}" if self.board[new[0], new[
+        if self.board[new[0]][new[1]].piece_type == "P" and abs(old[0] - new[0]) == 2:
+            self.en_passant_square = f"{chr(97 + new[1])}{8 - new[0] - 1}" if self.board[new[0]][new[
                 1]].color == "w" else f"{chr(97 + new[1])}{8 - new[0] + 1}"
         else:
             self.en_passant_square = None
 
         # Handle castling, move the rook also
-        if self.board[new[0], new[1]].piece_type == "K" and abs(old[1] - new[1]) == 2:
+        if self.board[new[0]][new[1]].piece_type == "K" and abs(old[1] - new[1]) == 2:
             # Queen side
             if new[1] == 2:
-                self.board[new[0], 3] = self.board[new[0], 0]
-                self.board[new[0], 0] = None
+                self.board[new[0]][3] = self.board[new[0]][0]
+                self.board[new[0]][0] = None
                 # Update rook position and make first move False
-                self.board[new[0], 3].position = "d1" if self.board[new[0], 3].color == "w" else "d8"
-                self.board[new[0], 3].first_move = False
+                self.board[new[0]][3].position = "d1" if self.board[new[0]][3].color == "w" else "d8"
+                self.board[new[0]][3].first_move = False
             else:
-                self.board[new[0], 5] = self.board[new[0], 7]
-                self.board[new[0], 7] = None
+                self.board[new[0]][5] = self.board[new[0]][7]
+                self.board[new[0]][7] = None
                 # Update rook position and make first move False
-                self.board[new[0], 5].position = "f1" if self.board[new[0], 5].color == "w" else "f8"
-                self.board[new[0], 5].first_move = False
+                self.board[new[0]][5].position = "f1" if self.board[new[0]][5].color == "w" else "f8"
+                self.board[new[0]][5].first_move = False
 
         # Remove castling rights if king or rook moved
-        if self.board[new[0], new[1]].piece_type == "K" or self.board[new[0], new[1]].piece_type == "R":
-            if self.board[new[0], new[1]].color == "w":
-                if self.board[new[0], new[1]].piece_type == "K":
+        if self.board[new[0]][new[1]].piece_type == "K" or self.board[new[0]][new[1]].piece_type == "R":
+            if self.board[new[0]][new[1]].color == "w":
+                if self.board[new[0]][new[1]].piece_type == "K":
                     self.castling_rights = self.castling_rights.replace("K", "")
                     self.castling_rights = self.castling_rights.replace("Q", "")
                 elif new[1] == 0:
@@ -494,7 +512,7 @@ class Board:
                 elif new[1] == 7:
                     self.castling_rights = self.castling_rights.replace("K", "")
             else:
-                if self.board[new[0], new[1]].piece_type == "K":
+                if self.board[new[0]][new[1]].piece_type == "K":
                     self.castling_rights = self.castling_rights.replace("k", "")
                     self.castling_rights = self.castling_rights.replace("q", "")
                 elif new[1] == 0:
@@ -503,30 +521,45 @@ class Board:
                     self.castling_rights = self.castling_rights.replace("k", "")
 
         # If pawn reached promotion, promote it to queen
-        if self.board[new[0], new[1]].piece_type == "P" and (new[0] == 0 or new[0] == 7):
+        if self.board[new[0]][new[1]].piece_type == "P" and (new[0] == 0 or new[0] == 7):
             self.pawn_promotion(new_pos)
 
         # Update the board
-        self.update(self.board[new[0], new[1]].piece_type, was_capture)
+        self.update(self.board[new[0]][new[1]].piece_type, was_capture)
 
 
 class Game:
 
     def __init__(self) -> None:
         self.board = Board("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
-        self.white_move_history = np.array([])
-        self.black_move_history = np.array([])
+        self.white_move_history: list = []
+        self.black_move_history: list = []
         self.game_over = False
 
     def is_threefold_repetition(self) -> bool:
         """
         Check if the game is over by threefold repetition
+        Count how many times the current board is in the board history
         :return: True if the game is over else False
         """
-        unique, counts = np.unique(self.board.board_history, return_counts=True)
-        for i in range(len(unique)):
-            if counts[i] == 3:
-                return True
+
+        # Loop through white boards
+        unique_board_counts = {}
+
+        for board in self.board.board_history:
+            board = board.split(" ")[0]
+            if board in unique_board_counts:
+                unique_board_counts[board] += 1
+
+                # Check if counts go to 3
+                if unique_board_counts[board] == 3:
+                    return True
+
+            else:
+                unique_board_counts[board] = 1
+
+        # Delete dict from memory
+        del unique_board_counts
 
         return False
 
@@ -534,9 +567,9 @@ class Game:
         self.board.move(old_pos, new_pos)
 
         if self.board.turn == "w":
-            self.white_move_history = np.append(self.white_move_history, f"{old_pos} {new_pos}")
+            self.white_move_history.append(f"{old_pos} {new_pos}")
         else:
-            self.black_move_history = np.append(self.black_move_history, f"{old_pos} {new_pos}")
+            self.black_move_history.append(f"{old_pos} {new_pos}")
 
         # Check if the game is over
         if self.board.is_checkmate("w"):
@@ -552,53 +585,30 @@ class Game:
             self.game_over = True
             print("Threefold repetition")
 
+    def un_do_move(self) -> None:
+        self.board.un_do_move()
 
-class Engine:
-
-    def random_move(self, game: Game) -> None:
-        """
-        Select a random piece for a color and select random move from its moves, if it does not have any moves, select another piece
-        :param game: Game object
-        :return: Tuple of old position and new position
-        """
-        # Get turn
-        turn = game.board.turn
-
-        # Get all the pieces of the color
-        pieces = []
-        for row in range(8):
-            for col in range(8):
-                if game.board.board[row, col] is not None and game.board.board[row, col].color == turn:
-                    pieces.append(game.board.board[row, col])
-
-        # Select random piece
-        while True:
-            piece = np.random.choice(pieces)
-            if len(piece.moves) > 0:
-                break
-
-        # Select random move
-        move = np.random.choice(piece.moves)
-
-        # Perform the move
-        game.move(piece.position, move)
+        if self.board.turn == "w":
+            self.white_move_history.pop()
+        else:
+            self.black_move_history.pop()
 
 
 def print_moves_for_all_pieces(board) -> None:
     for row in range(8):
         for col in range(8):
-            if board.board[row, col] is not None:
-                print(f"Piece: {board.board[row, col].piece_type} {board.board[row, col].color}", end=" ")
-                print(f"Position: {board.board[row, col].position}", end=" ")
-                print(f"Moves: {board.board[row, col].moves}")
+            if board.board[row][col] is not None:
+                print(f"Piece: {board.board[row][col].piece_type} {board.board[row][col].color}", end=" ")
+                print(f"Position: {board.board[row][col].position}", end=" ")
+                print(f"Moves: {board.board[row][col].moves}")
 
 
 def print_board(board) -> None:
     for row in range(8):
         for col in range(8):
-            if board.board[row, col] is not None:
+            if board.board[row][col] is not None:
                 print(
-                    f"{board.board[row, col].piece_type.upper() if board.board[row, col].color == 'w' else board.board[row, col].piece_type.lower():^4}",
+                    f"{board.board[row][col].piece_type.upper() if board.board[row][col].color == 'w' else board.board[row][col].piece_type.lower():^4}",
                     end=" ")
             else:
                 print("None", end=" ")
@@ -620,25 +630,38 @@ def test():
 
 def run_game() -> int:
     game = Game()
-    engine = Engine()
+    engine = Engine(game)
+
+    index = 0
+
     while not game.game_over:
-        engine.random_move(game)
+        # Make copy of the game.board for engine
+        move = engine.random_move()
+        game.move(move[0], move[1])
 
-    return game.black_move_history.size
+        # # If index is divisible by 2, un-do move
+        # if index % 4 == 0:
+        #     game.un_do_move()
+
+        index += 1
+
+    print(f"Turns played: {index // 2}")
+
+    return len(game.black_move_history)
 
 
-def run_multiple_games(count: int) -> np.ndarray:
-    game_moves = np.array([])
+def run_multiple_games(count: int) -> float:
+    game_moves = []
 
     for _ in range(count):
         move_counter = run_game()
-        game_moves = np.append(game_moves, move_counter)
+        game_moves.append(move_counter)
 
-    return np.mean(game_moves)
+    return sum(game_moves) / len(game_moves)
 
 
 def run_multiprocessing():
-    games = 100
+    games = 1_000
     games_per_core = games // 16
     start_time = time.perf_counter_ns()
 
@@ -653,14 +676,41 @@ def run_multiprocessing():
 
     end_time = time.perf_counter_ns()
 
-    print(f"Time: {(end_time - start_time) / 1_000_000_000} s")
-    print(f"Average moves: {average_moves / 16}")
+    print("\n" + "#" * 50)
+    print("Results:")
+    print(f"[Games] {games}")
+    print(f"[Time] {(end_time - start_time) / 1_000_000_000: .2f} s")
+    print(f"[Average turns] {average_moves / 16: .2f}")
+    print(f"[Average time per game] {(end_time - start_time) / games / 1_000_000: .2f} ms")
+    print(f"[Average time per move] {(end_time - start_time) / (average_moves * 2 * games) / 1_000_000: .4f} ms")
+    print("#" * 50)
+
+
+def profiling():
+    with cProfile.Profile() as pr:
+        run_game()
+
+    stats = pstats.Stats(pr)
+    stats.sort_stats(pstats.SortKey.TIME)
+    stats.print_stats()
+
+
+def check_board_size():
+    import sys, os
+
+    # Get the size in kilobytes
+    board = Board("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+    size = sys.getsizeof(board) / 1024
+    print(f"Size: {size} KB")
 
 
 def main():
     # test()
     # run_game()
-    # run_multiprocessing()
+    run_multiprocessing()
+    # profiling()
+    # check_board_size()
+
     pass
 
 
