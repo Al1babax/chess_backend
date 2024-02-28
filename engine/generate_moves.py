@@ -14,7 +14,7 @@ class Movement:
         moves = []
 
         # Get the position of the piece
-        position: Tuple[int, int] = pos_from_chess_notation(self.piece.position)
+        position: Tuple[int, int] = self.piece.position
         color: str = self.piece.color
 
         for i in range(1, distance):
@@ -34,9 +34,9 @@ class Movement:
                 break
 
             if self.object.checking_move_validity:
-                moves.append(f"{chr(position[1] + 97)}{8 - (position[0] - i)}")
-            elif self.object.can_move(self.piece.position, f"{chr(position[1] + 97)}{8 - (position[0] - i)}"):
-                moves.append(f"{chr(position[1] + 97)}{8 - (position[0] - i)}")
+                moves.append((position[0] - i, position[1]))
+            elif self.object.can_move(self.piece.position, (position[0] - i, position[1])):
+                moves.append((position[0] - i, position[1]))
 
             # Break if enemy piece
             if is_enemy:
@@ -48,7 +48,7 @@ class Movement:
         moves = []
 
         # Get the position of the piece
-        position: Tuple[int, int] = pos_from_chess_notation(self.piece.position)
+        position: Tuple[int, int] = self.piece.position
         color: str = self.piece.color
 
         for i in range(1, distance):
@@ -67,9 +67,9 @@ class Movement:
                 break
 
             if self.object.checking_move_validity:
-                moves.append(f"{chr(position[1] + 97)}{8 - (position[0] + i)}")
-            elif self.object.can_move(self.piece.position, f"{chr(position[1] + 97)}{8 - (position[0] + i)}"):
-                moves.append(f"{chr(position[1] + 97)}{8 - (position[0] + i)}")
+                moves.append((position[0] + i, position[1]))
+            elif self.object.can_move(self.piece.position, (position[0] + i, position[1])):
+                moves.append((position[0] + i, position[1]))
 
             # Break if enemy piece
             if is_enemy:
@@ -81,7 +81,7 @@ class Movement:
         moves = []
 
         # Get the position of the piece
-        position: Tuple[int, int] = pos_from_chess_notation(self.piece.position)
+        position: Tuple[int, int] = self.piece.position
         color: str = self.piece.color
 
         for i in range(1, distance):
@@ -97,9 +97,9 @@ class Movement:
                 break
 
             if self.object.checking_move_validity:
-                moves.append(f"{chr(position[1] + 97 + i)}{8 - position[0]}")
-            elif self.object.can_move(self.piece.position, f"{chr(position[1] + 97 + i)}{8 - position[0]}"):
-                moves.append(f"{chr(position[1] + 97 + i)}{8 - position[0]}")
+                moves.append((position[0], position[1] + i))
+            elif self.object.can_move(self.piece.position, (position[0], position[1] + i)):
+                moves.append((position[0], position[1] + i))
 
             # Break if enemy piece
             if is_enemy:
@@ -111,7 +111,7 @@ class Movement:
         moves = []
 
         # Get the position of the piece
-        position: Tuple[int, int] = pos_from_chess_notation(self.piece.position)
+        position: Tuple[int, int] = self.piece.position
         color: str = self.piece.color
 
         for i in range(1, distance):
@@ -126,9 +126,9 @@ class Movement:
                 break
 
             if self.object.checking_move_validity:
-                moves.append(f"{chr(position[1] + 97 - i)}{8 - position[0]}")
-            elif self.object.can_move(self.piece.position, f"{chr(position[1] + 97 - i)}{8 - position[0]}"):
-                moves.append(f"{chr(position[1] + 97 - i)}{8 - position[0]}")
+                moves.append((position[0], position[1] - i))
+            elif self.object.can_move(self.piece.position, (position[0], position[1] - i)):
+                moves.append((position[0], position[1] - i))
 
             # Break if enemy piece
             if is_enemy:
@@ -140,7 +140,7 @@ class Movement:
         moves = []
 
         # Get the position of the piece
-        position: Tuple[int, int] = pos_from_chess_notation(self.piece.position)
+        position: Tuple[int, int] = self.piece.position
         color: str = self.piece.color
 
         for i in range(1, distance):
@@ -156,9 +156,9 @@ class Movement:
                 break
 
             if self.object.checking_move_validity:
-                moves.append(f"{chr(position[1] + 97 + i)}{8 - (position[0] - i)}")
-            elif self.object.can_move(self.piece.position, f"{chr(position[1] + 97 + i)}{8 - (position[0] - i)}"):
-                moves.append(f"{chr(position[1] + 97 + i)}{8 - (position[0] - i)}")
+                moves.append((position[0] - i, position[1] + i))
+            elif self.object.can_move(self.piece.position, (position[0] - i, position[1] + i)):
+                moves.append((position[0] - i, position[1] + i))
 
             # Break if enemy piece
             if is_enemy:
@@ -170,7 +170,7 @@ class Movement:
         moves = []
 
         # Get the position of the piece
-        position: Tuple[int, int] = pos_from_chess_notation(self.piece.position)
+        position: Tuple[int, int] = self.piece.position
         color: str = self.piece.color
 
         for i in range(1, distance):
@@ -186,9 +186,9 @@ class Movement:
                 break
 
             if self.object.checking_move_validity:
-                moves.append(f"{chr(position[1] + 97 - i)}{8 - (position[0] - i)}")
-            elif self.object.can_move(self.piece.position, f"{chr(position[1] + 97 - i)}{8 - (position[0] - i)}"):
-                moves.append(f"{chr(position[1] + 97 - i)}{8 - (position[0] - i)}")
+                moves.append((position[0] - i, position[1] - i))
+            elif self.object.can_move(self.piece.position, (position[0] - i, position[1] - i)):
+                moves.append((position[0] - i, position[1] - i))
 
             # Break if enemy piece
             if is_enemy:
@@ -200,7 +200,7 @@ class Movement:
         moves = []
 
         # Get the position of the piece
-        position: Tuple[int, int] = pos_from_chess_notation(self.piece.position)
+        position: Tuple[int, int] = self.piece.position
         color: str = self.piece.color
 
         for i in range(1, distance):
@@ -216,9 +216,9 @@ class Movement:
                 break
 
             if self.object.checking_move_validity:
-                moves.append(f"{chr(position[1] + 97 + i)}{8 - (position[0] + i)}")
-            elif self.object.can_move(self.piece.position, f"{chr(position[1] + 97 + i)}{8 - (position[0] + i)}"):
-                moves.append(f"{chr(position[1] + 97 + i)}{8 - (position[0] + i)}")
+                moves.append((position[0] + i, position[1] + i))
+            elif self.object.can_move(self.piece.position, (position[0] + i, position[1] + i)):
+                moves.append((position[0] + i, position[1] + i))
 
             # Break if enemy piece
             if is_enemy:
@@ -230,7 +230,7 @@ class Movement:
         moves = []
 
         # Get the position of the piece
-        position: Tuple[int, int] = pos_from_chess_notation(self.piece.position)
+        position: Tuple[int, int] = self.piece.position
         color: str = self.piece.color
 
         for i in range(1, distance):
@@ -246,9 +246,9 @@ class Movement:
                 break
 
             if self.object.checking_move_validity:
-                moves.append(f"{chr(position[1] + 97 - i)}{8 - (position[0] + i)}")
-            elif self.object.can_move(self.piece.position, f"{chr(position[1] + 97 - i)}{8 - (position[0] + i)}"):
-                moves.append(f"{chr(position[1] + 97 - i)}{8 - (position[0] + i)}")
+                moves.append((position[0] + i, position[1] - i))
+            elif self.object.can_move(self.piece.position, (position[0] + i, position[1] - i)):
+                moves.append((position[0] + i, position[1] - i))
 
             # Break if enemy piece
             if is_enemy:
@@ -260,7 +260,7 @@ class Movement:
         moves = []
 
         # Get the position of the piece
-        position: Tuple[int, int] = pos_from_chess_notation(self.piece.position)
+        position: Tuple[int, int] = self.piece.position
 
         # Generate all the possible moves
         possible_moves = [
@@ -284,9 +284,9 @@ class Movement:
                 continue
 
             if self.object.checking_move_validity:
-                moves.append(f"{chr(move[1] + 97)}{8 - move[0]}")
-            elif self.object.can_move(self.piece.position, f"{chr(move[1] + 97)}{8 - move[0]}"):
-                moves.append(f"{chr(move[1] + 97)}{8 - move[0]}")
+                moves.append((move[0], move[1]))
+            elif self.object.can_move(self.piece.position, (move[0], move[1])):
+                moves.append((move[0], move[1]))
 
         return moves
 
@@ -302,16 +302,16 @@ class Movement:
         col_offset = [-1, 1]
 
         # Get the position of the piece
-        position: Tuple[int, int] = pos_from_chess_notation(self.piece.position)
+        position: Tuple[int, int] = self.piece.position
 
         for col in col_offset:
             new_pos = (position[0] + row_offset, position[1] + col)
             if 0 <= new_pos[0] < 8 and 0 <= new_pos[1] < 8:
                 if self.board[new_pos[0]][new_pos[1]] and self.board[new_pos[0]][new_pos[1]].color != self.piece.color:
                     if self.object.checking_move_validity:
-                        moves.append(f"{chr(new_pos[1] + 97)}{8 - new_pos[0]}")
-                    elif self.object.can_move(self.piece.position, f"{chr(new_pos[1] + 97)}{8 - new_pos[0]}"):
-                        moves.append(f"{chr(new_pos[1] + 97)}{8 - new_pos[0]}")
+                        moves.append((new_pos[0], new_pos[1]))
+                    elif self.object.can_move(self.piece.position, (new_pos[0], new_pos[1])):
+                        moves.append((new_pos[0], new_pos[1]))
 
         # Also check for en passant
         moves.extend(self.generate_en_passant(position))
@@ -348,18 +348,18 @@ class Movement:
         if self.piece.color == "w":
             # Check if top left
             if position[0] - 1 == en_passant_square[0] and position[1] - 1 == en_passant_square[1]:
-                move.append(f"{chr(en_passant_square[1] + 97)}{8 - en_passant_square[0]}")
+                move.append((en_passant_square[0], en_passant_square[1]))
             # Check if top right
             elif position[0] - 1 == en_passant_square[0] and position[1] + 1 == en_passant_square[1]:
-                move.append(f"{chr(en_passant_square[1] + 97)}{8 - en_passant_square[0]}")
+                move.append((en_passant_square[0], en_passant_square[1]))
         # If black turn, check if the en passant square is diagonal to the piece
         else:
             # Check if bottom left
             if position[0] + 1 == en_passant_square[0] and position[1] - 1 == en_passant_square[1]:
-                move.append(f"{chr(en_passant_square[1] + 97)}{8 - en_passant_square[0]}")
+                move.append((en_passant_square[0], en_passant_square[1]))
             # Check if bottom right
             elif position[0] + 1 == en_passant_square[0] and position[1] + 1 == en_passant_square[1]:
-                move.append(f"{chr(en_passant_square[1] + 97)}{8 - en_passant_square[0]}")
+                move.append((en_passant_square[0], en_passant_square[1]))
 
         if len(move) == 0:
             return move
@@ -460,24 +460,24 @@ class Movement:
             if self.board[7][5] is None and self.board[7][6] is None:
                 # Make sure kingside rook has not moved
                 if self.board[7][7] and self.board[7][7].piece_type == "R" and self.board[7][7].first_move:
-                    moves.append("g1")
+                    moves.append((7, 6))
         if color == "b" and "k" in rights:
             if self.board[0][5] is None and self.board[0][6] is None:
                 # Make sure kingside rook has not moved
                 if self.board[0][7] and self.board[0][7].piece_type == "R" and self.board[0][7].first_move:
-                    moves.append("g8")
+                    moves.append((0, 6))
 
         # For queenside castling, make sure squares inbetween are empty
         if color == "w" and "Q" in rights:
             if self.board[7][1] is None and self.board[7][2] is None and self.board[7][3] is None:
                 # Make sure queenside rook has not moved
                 if self.board[7][0] and self.board[7][0].piece_type == "R" and self.board[7][0].first_move:
-                    moves.append("c1")
+                    moves.append((7, 2))
         if color == "b" and "q" in rights:
             if self.board[0][1] is None and self.board[0][2] is None and self.board[0][3] is None:
                 # Make sure queenside rook has not moved
                 if self.board[0][0] and self.board[0][0].piece_type == "R" and self.board[0][0].first_move:
-                    moves.append("c8")
+                    moves.append((0, 2))
 
         # Loop over these moves and validate them
         valid_moves = []

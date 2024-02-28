@@ -39,16 +39,9 @@ class Engine:
 
     def gather_all_moves(self):
         # Gather all moves from pieces for whose turn it is
-        moves = []
         turn = self.board.turn
 
-        for row in range(8):
-            for col in range(8):
-                if self.board.board[row][col] is not None and self.board.board[row][col].color == turn:
-                    for move in self.board.board[row][col].moves:
-                        moves.append((self.board.board[row][col].position, move))
-
-        return moves
+        return self.board.white_moves if turn == "w" else self.board.black_moves
 
     def search(self, depth: int) -> int:
         """
