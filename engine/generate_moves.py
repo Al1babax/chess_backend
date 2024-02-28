@@ -56,7 +56,8 @@ class Movement:
             if position[0] + i >= 8:
                 break
 
-            is_enemy = self.board[position[0] + i][position[1]] and self.board[position[0] + i][position[1]].color != color
+            is_enemy = self.board[position[0] + i][position[1]] and self.board[position[0] + i][
+                position[1]].color != color
 
             # For pawn if square has enemy break
             if self.is_pawn and is_enemy:
@@ -119,7 +120,8 @@ class Movement:
             if position[1] - i < 0:
                 break
 
-            is_enemy = self.board[position[0]][position[1] - i] and self.board[position[0]][position[1] - i].color != color
+            is_enemy = self.board[position[0]][position[1] - i] and self.board[position[0]][
+                position[1] - i].color != color
 
             # If square is not empty or enemy piece, break
             if not (self.board[position[0]][position[1] - i] is None or is_enemy):

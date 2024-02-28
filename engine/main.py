@@ -1,11 +1,12 @@
-import generate_moves
 import time
 import multiprocessing
 import cProfile
 import pstats
-from typing import Tuple
+from typing import Tuple, List
 import datetime as dt
 
+# My imports
+import generate_moves
 from engine.chess_engine import Engine
 
 
@@ -84,7 +85,7 @@ class Piece:
 
 class Board:
     def __init__(self, fen_string: str, white_king: Tuple[int, int] = None, black_king: Tuple[int, int] = None,
-                 board_history: list = None) -> None:
+                 board_history: list = None, white_moves: list = None, black_moves: list = None) -> None:
         # Fen string to initialize the board
         self.fen_string = fen_string
 
@@ -116,9 +117,15 @@ class Board:
         # Create board
         self.create_board()
 
+        # Attack lines
+        self.white_direct_attack: List[tuple, list] = [(), []]
+        self.white_potential_attack: List[tuple, list] = [(), []]
+        self.black_direct_attack: List[tuple, list] = [(), []]
+        self.black_potential_attack: List[tuple, list] = [(), []]
+
         # Moves
-        self.black_moves = []
-        self.white_moves = []
+        self.black_moves = [] if black_moves is None else black_moves
+        self.white_moves = [] if white_moves is None else white_moves
 
         # Generate moves
         self.generate_piece_moves("w")
@@ -126,6 +133,10 @@ class Board:
 
         # Board history
         self.board_history = [self.fen_string] if board_history is None else board_history
+
+        # Recorded moves
+        self.white_move_history = []
+        self.black_move_history = []
 
     def generate_fen_string(self) -> None:
         """
@@ -324,70 +335,6 @@ class Board:
 
         return flag
 
-    def can_move2(self, old_pos: Tuple[int, int], new_pos: Tuple[int, int]):
-        # WILL NOT WORK AS IDEA AT LEAST NOW
-        """
-        Make the move momentarily and check if king is in any enemy moves,
-        also make certain the new momentarily move did not block this attack.
-
-        If king is not under attack, return True, else False
-        :param old_pos:
-        :param new_pos:
-        :return:
-        """
-        # Get the piece and potential capture
-        piece: Piece = self.board[old_pos[0]][old_pos[1]]
-        potential_capture = self.board[new_pos[0]][new_pos[1]]
-
-        # Move the piece
-        self.board[new_pos[0]][new_pos[1]] = piece
-        self.board[old_pos[0]][old_pos[1]] = None
-
-        # King info
-        if piece.piece_type != "K":
-            king_position = self.white_king if piece.color == "w" else self.black_king
-        else:
-            king_position = new_pos
-            self.board[new_pos[0]][new_pos[1]].position = new_pos
-
-        # Loop through enemy moves and check if king is in them
-        enemy_moves = self.white_moves if piece.color == "b" else self.black_moves
-
-        for move in enemy_moves:
-            # If move is king, and king is under attack then that king move is invalid
-            if king_position == move[1]:
-                if piece.piece_type == "K":
-                    # Revert the board back to original state
-                    self.board[new_pos[0]][new_pos[1]] = potential_capture
-                    self.board[old_pos[0]][old_pos[1]] = piece
-
-                    # Revert king position
-                    if piece.piece_type == "K":
-                        if piece.color == "w":
-                            self.white_king = old_pos
-                            self.board[old_pos[0]][old_pos[1]].position = old_pos
-                        else:
-                            self.black_king = old_pos
-                            self.board[old_pos[0]][old_pos[1]].position = old_pos
-
-                    return False
-            # If move captured that threatening piece that was attacking king then the move is
-
-        # Revert the board back to original state
-        self.board[new_pos[0]][new_pos[1]] = potential_capture
-        self.board[old_pos[0]][old_pos[1]] = piece
-
-        # Revert king position
-        if piece.piece_type == "K":
-            if piece.color == "w":
-                self.white_king = old_pos
-                self.board[old_pos[0]][old_pos[1]].position = old_pos
-            else:
-                self.black_king = old_pos
-                self.board[old_pos[0]][old_pos[1]].position = old_pos
-
-        return True
-
     def is_check(self, color) -> bool:
         """
         Check if the color's king is in check by checking if opposite color's pieces have the king in their moves
@@ -501,9 +448,6 @@ class Board:
         # Update board history
         self.board_history.append(self.fen_string)
 
-        # print the board
-        # print_board(self)
-
     def pawn_promotion(self, position: Tuple[int, int], piece_type: str = "Q") -> None:
         """
         Promote the pawn to a piece
@@ -512,6 +456,16 @@ class Board:
         :return:
         """
         self.board[position[0]][position[1]].piece_type = piece_type
+
+    def update_attack_lines(self, piece: Piece):
+        """
+        Update the attack lines for the piece
+        1. Generate direct attacks by generating the possible moves for the piece, if move could attack the king, save it
+        2. Generate potential attacks by generating the possible moves for the piece, if move could attack the king jumping over one enemy piece, save it
+        :param piece:
+        :return:
+        """
+        pass
 
     def undo_move(self) -> None:
         """
@@ -527,11 +481,46 @@ class Board:
         # Save init vars
         board_save = self.board_history
 
+        # Piece that was moved
+        prev_piece_position = self.white_moves[-1][1] if self.turn == "b" else self.black_moves[-1][1]
+        prev_piece = self.board[prev_piece_position[0]][prev_piece_position[1]]
+
+        # If prev_piece_position in that colors attack lines remove it
+        if prev_piece.color == "w":
+            for attack_line in self.white_direct_attack:
+                if prev_piece_position in attack_line[0]:
+                    self.white_direct_attack.remove(attack_line)
+
+            for attack_line in self.white_potential_attack:
+                if prev_piece_position in attack_line[0]:
+                    self.white_potential_attack.remove(attack_line)
+        else:
+            for attack_line in self.black_direct_attack:
+                if prev_piece_position in attack_line[0]:
+                    self.black_direct_attack.remove(attack_line)
+
+            for attack_line in self.black_potential_attack:
+                if prev_piece_position in attack_line[0]:
+                    self.black_potential_attack.remove(attack_line)
+
+        # Save previous attack lines
+        attack_lines = [self.white_direct_attack.copy(), self.white_potential_attack.copy(),
+                        self.black_direct_attack.copy(), self.black_potential_attack.copy()]
+
         # Update the board
         self.__init__(previous_fen)
 
         # Restore init vars
         self.board_history = board_save
+
+        # Restore previous attack lines
+        self.white_direct_attack = attack_lines[0]
+        self.white_potential_attack = attack_lines[1]
+        self.black_direct_attack = attack_lines[2]
+        self.black_potential_attack = attack_lines[3]
+
+        # Update the attack lines for the piece
+        self.update_attack_lines(prev_piece)
 
         # Find the new locations for white and black king positions
         for row in range(8):
@@ -543,9 +532,6 @@ class Board:
                         else:
                             self.black_king = self.board[row][col].position
 
-        # print the board
-        # print_board(self)
-
     def move(self, old_pos, new_pos) -> None:
         """
         Move the piece
@@ -554,10 +540,6 @@ class Board:
         :param new_pos: New position of the piece
         :return:
         """
-        # old = pos_from_chess_notation(old_pos)
-        # new = pos_from_chess_notation(new_pos)
-        # print(f"White moves: {self.white_moves}")
-        # print(f"Black moves: {self.black_moves}")
 
         # Check if the move was capture
         was_capture = True if self.board[new_pos[0]][new_pos[1]] is not None else False
@@ -624,6 +606,12 @@ class Board:
         # If pawn reached promotion, promote it to queen
         if self.board[new_pos[0]][new_pos[1]].piece_type == "P" and (new_pos[0] == 0 or new_pos[0] == 7):
             self.pawn_promotion(new_pos)
+
+        # Record the move for the color
+        if self.turn == "w":
+            self.white_move_history.append((old_pos, new_pos))
+        else:
+            self.black_move_history.append((old_pos, new_pos))
 
         # Update the board
         self.update(self.board[new_pos[0]][new_pos[1]].piece_type, was_capture)
