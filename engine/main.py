@@ -52,9 +52,6 @@ class Piece:
         :param piece_type: Type of the piece, either "P", "N", "B", "R", "Q", "K
         :param moves: List of possible moves of the piece in chess notation
         """
-        if moves is None:
-            moves = []
-
         # Position of the piece using chess notation
         self.position: str = position
 
@@ -149,7 +146,6 @@ class Board:
         self.fen_string = fen_string
 
     def create_board(self) -> None:
-        # Create the board so that white piece are first in the matrix
         fen_piece = self.fen_string.split(" ")[0]
         rows = fen_piece.split("/")
 
@@ -400,7 +396,7 @@ class Board:
         self.soft_generate_piece_moves(self.turn)
 
         # Update check for both kings
-        colors = ["w", "b"]
+        # colors = ["w", "b"]
 
         # for color in colors:
         #     king_pos = pos_from_chess_notation(self.white_king if color == "w" else self.black_king)
@@ -495,10 +491,7 @@ class Board:
         self.board[old[0]][old[1]] = None
 
         # Update the position of the piece
-        try:
-            self.board[new[0]][new[1]].position = new_pos if len(new_pos) == 2 else new_pos[1:]
-        except Exception as e:
-            raise Exception(f"Old: {old_pos}, New: {new_pos}, New: {new}, Old: {old}, {e}")
+        self.board[new[0]][new[1]].position = new_pos if len(new_pos) == 2 else new_pos[1:]
 
         # Make first move False, specifically for pawns
         self.board[new[0]][new[1]].first_move = False
@@ -650,8 +643,6 @@ def print_board(board) -> None:
         print("")
 
 
-
-
 def test():
     game = Game()
     engine = Engine(game)
@@ -719,6 +710,7 @@ def run_multiprocessing():
 
 def profiling():
     with cProfile.Profile() as pr:
+        # test()
         run_game()
 
     stats = pstats.Stats(pr)
@@ -736,10 +728,10 @@ def check_board_size():
 
 
 def main():
-    test()
+    # test()
     # run_game()
     # run_multiprocessing()
-    # profiling()
+    profiling()
     # check_board_size()
 
     pass
