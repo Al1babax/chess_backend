@@ -521,6 +521,190 @@ def generate(piece: Piece, board: Board) -> list:
     return moves
 
 
+class AttackLines:
+    """Class to get real attack lines and pinning attack lines from kings perspective to check move validity"""
+
+    def __init__(self, king, board):
+        self.attack_lines = []
+        self.pinning_lines = []
+        self.king: Piece = king
+        self.king_position = king.position
+        self.board: Board = board
+
+    def generate_attack_lines(self):
+        directions = [self.move_up, self.move_down, self.move_right, self.move_left, self.move_up_right,
+                      self.move_up_left, self.move_down_right, self.move_down_left, self.move_knight]
+
+        for direction in directions:
+            direction()
+
+    def normal_move(self, direction):
+        attack_line = []
+        possible_pin_piece = None
+        pinning_line = False
+        jumped_over = False
+        enemy_found = False
+
+        directions = {
+            "up": (-1, 0),
+            "down": (1, 0),
+            "right": (0, 1),
+            "left": (0, -1),
+        }
+
+        # Travel up from kings position, to find an enemy, can jump over ONE friendly piece and if that happens
+        # The possible attack line becomes pinning line IF enemy is found after that, which can attack the king (queen, rook)
+        # Update the friendly piece to be pinned and extend the classes attack_lines or pinning_lines accordingly
+
+        # Temp location for the king, not to mess up the original for other functions in class
+        temp_location = self.king_position
+
+        while not enemy_found:
+            # Update the temp location to move up
+            temp_location = (temp_location[0] + directions[direction], temp_location[1] + directions[direction])
+
+            # Check if the position is valid
+            if not (0 <= temp_location[0] < 8 and 0 <= temp_location[1] < 8):
+                break
+
+            # Get the square
+            square = self.board.board[temp_location[0]][temp_location[1]]
+
+            # Check if the square is empty
+            if square is None:
+                attack_line.append(temp_location)
+                continue
+
+            # Check if the square has an enemy piece (rook or queen) if any other enemy then return
+            if square.color != self.king.color:
+                if square.piece_type not in ["R", "Q"]:
+                    return
+                elif square.piece_type in ["R", "Q"]:
+                    attack_line.append(temp_location)
+                    enemy_found = True
+                    break
+
+            # Check if the square has a friendly piece
+            if square.color == self.king.color:
+                if jumped_over is False:
+                    pinning_line = True
+                    possible_pin_piece = (temp_location[0], temp_location[1])
+                    jumped_over = True
+                    continue
+                else:
+                    break
+
+        # If no enemy found, return
+        if not enemy_found:
+            return
+
+        # If enemy found, extend the attack_lines or pinning_lines
+        if pinning_line:
+            # Update the friendly piece to be pinned
+            self.board.board[possible_pin_piece[0]][possible_pin_piece[1]].is_pinned = True
+            self.pinning_lines.extend(attack_line)
+        else:
+            self.attack_lines.extend(attack_line)
+
+    def diagonal_move(self, direction):
+        # TODO: Add pawn diagonal move here
+
+        attack_line = []
+        possible_pin_piece = None
+        pinning_line = False
+        jumped_over = False
+        enemy_found = False
+
+        directions = {
+            "up_right": (-1, 1),
+            "up_left": (-1, -1),
+            "down_right": (1, 1),
+            "down_left": (1, -1),
+        }
+
+        # Travel up from kings position, to find an enemy, can jump over ONE friendly piece and if that happens
+        # The possible attack line becomes pinning line IF enemy is found after that, which can attack the king (bishop or queen)
+        # Update the friendly piece to be pinned and extend the classes attack_lines or pinning_lines accordingly
+
+        # Temp location for the king, not to mess up the original for other functions in class
+        temp_location = self.king_position
+
+        while not enemy_found:
+            # Update the temp location to move up
+            temp_location = (temp_location[0] + directions[direction], temp_location[1] + directions[direction])
+
+            # Check if the position is valid
+            if not (0 <= temp_location[0] < 8 and 0 <= temp_location[1] < 8):
+                break
+
+            # Get the square
+            square = self.board.board[temp_location[0]][temp_location[1]]
+
+            # Check if the square is empty
+            if square is None:
+                attack_line.append(temp_location)
+                continue
+
+            # Check if the square has an enemy piece (bishop or queen) if any other enemy then return
+            if square.color != self.king.color:
+                if square.piece_type not in ["B", "Q"]:
+                    return
+                elif square.piece_type in ["B", "Q"]:
+                    attack_line.append(temp_location)
+                    enemy_found = True
+                    break
+
+            # Check if the square has a friendly piece
+            if square.color == self.king.color:
+                if jumped_over is False:
+                    pinning_line = True
+                    possible_pin_piece = (temp_location[0], temp_location[1])
+                    jumped_over = True
+                    continue
+                else:
+                    break
+
+        # If no enemy found, return
+        if not enemy_found:
+            return
+
+        # If enemy found, extend the attack_lines or pinning_lines
+        if pinning_line:
+            # Update the friendly piece to be pinned
+            self.board.board[possible_pin_piece[0]][possible_pin_piece[1]].is_pinned = True
+            self.pinning_lines.extend(attack_line)
+        else:
+            self.attack_lines.extend(attack_line)
+
+    def move_up(self):
+        self.normal_move("up")
+
+    def move_down(self):
+        self.normal_move("down")
+
+    def move_right(self):
+        self.normal_move("right")
+
+    def move_left(self):
+        self.normal_move("left")
+
+    def move_up_right(self):
+        self.diagonal_move("up_right")
+
+    def move_up_left(self):
+        self.diagonal_move("up_left")
+
+    def move_down_right(self):
+        self.diagonal_move("down_right")
+
+    def move_down_left(self):
+        self.diagonal_move("down_left")
+
+    def move_knight(self):
+        # TODO: Add knight move here
+        pass
+
+
 def generate_test(piece: Piece, board) -> list:
     movement_object = Movement(piece, board)
     moves = []
@@ -534,6 +718,20 @@ def generate_test(piece: Piece, board) -> list:
         moves.extend(new_moves)
 
     return moves
+
+
+def generate_lines(king: Piece, board: Board) -> Tuple[List[Tuple[int, int]], List[Tuple[int, int]]]:
+    attack_obj = AttackLines(king, board)
+
+    # Generate attack lines for the king from all possible movement
+    # First do up, down, left, right and if you find enemy piece make sure that enemy piece can also attack the king
+    # With up,dow,left,right only queen and rook can attack the king
+    # For up-left, up-right, down-left, down-right only queen and bishop can attack the king OR pawn if max 1 square away right direction
+    # For knight moves, only knight can attack the king
+    # No need to generate moves for that enemy piece to know if it can attack based on previous logic
+
+    # From all these function calls get back two different lists, one for direct attack lines and one for pinning attack lines
+    # Also when jumping over own piece once and finding threat behind it that can attack, make that own piece is_pinned for the object
 
 
 def main():

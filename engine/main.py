@@ -10,13 +10,6 @@ import generate_moves
 from engine.chess_engine import Engine
 
 
-# TODO: After piece moves, check if that new position is direct attack to enemy king or potential attack to enemy king
-# TODO: IF save save it to black or white direct or potential attack list (piece_location, [list_of_square_attacks])
-# TODO: Also if it was potential attack make  that piece on the way to be pinned
-
-# TODO: Change can_move function to check the enemies direct_attack list and potential attack list
-
-
 def measure_time(func):
     def wrapper(*args, **kwargs):
         start = time.perf_counter_ns()
@@ -116,12 +109,6 @@ class Board:
 
         # Create board
         self.create_board()
-
-        # Attack lines
-        self.white_direct_attack: List[tuple, list] = [(), []]
-        self.white_potential_attack: List[tuple, list] = [(), []]
-        self.black_direct_attack: List[tuple, list] = [(), []]
-        self.black_potential_attack: List[tuple, list] = [(), []]
 
         # Moves
         self.black_moves = [] if black_moves is None else black_moves
@@ -457,16 +444,6 @@ class Board:
         """
         self.board[position[0]][position[1]].piece_type = piece_type
 
-    def update_attack_lines(self, piece: Piece):
-        """
-        Update the attack lines for the piece
-        1. Generate direct attacks by generating the possible moves for the piece, if move could attack the king, save it
-        2. Generate potential attacks by generating the possible moves for the piece, if move could attack the king jumping over one enemy piece, save it
-        :param piece:
-        :return:
-        """
-        pass
-
     def undo_move(self) -> None:
         """
         Pop the previous fen string and reconstruct the board
@@ -481,46 +458,11 @@ class Board:
         # Save init vars
         board_save = self.board_history
 
-        # Piece that was moved
-        prev_piece_position = self.white_moves[-1][1] if self.turn == "b" else self.black_moves[-1][1]
-        prev_piece = self.board[prev_piece_position[0]][prev_piece_position[1]]
-
-        # If prev_piece_position in that colors attack lines remove it
-        if prev_piece.color == "w":
-            for attack_line in self.white_direct_attack:
-                if prev_piece_position in attack_line[0]:
-                    self.white_direct_attack.remove(attack_line)
-
-            for attack_line in self.white_potential_attack:
-                if prev_piece_position in attack_line[0]:
-                    self.white_potential_attack.remove(attack_line)
-        else:
-            for attack_line in self.black_direct_attack:
-                if prev_piece_position in attack_line[0]:
-                    self.black_direct_attack.remove(attack_line)
-
-            for attack_line in self.black_potential_attack:
-                if prev_piece_position in attack_line[0]:
-                    self.black_potential_attack.remove(attack_line)
-
-        # Save previous attack lines
-        attack_lines = [self.white_direct_attack.copy(), self.white_potential_attack.copy(),
-                        self.black_direct_attack.copy(), self.black_potential_attack.copy()]
-
         # Update the board
         self.__init__(previous_fen)
 
         # Restore init vars
         self.board_history = board_save
-
-        # Restore previous attack lines
-        self.white_direct_attack = attack_lines[0]
-        self.white_potential_attack = attack_lines[1]
-        self.black_direct_attack = attack_lines[2]
-        self.black_potential_attack = attack_lines[3]
-
-        # Update the attack lines for the piece
-        self.update_attack_lines(prev_piece)
 
         # Find the new locations for white and black king positions
         for row in range(8):
