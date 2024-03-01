@@ -197,21 +197,21 @@ class Board:
             self.black_moves = []
 
         # Reset pinned pieces
-        self.white_pinned_pieces = []
-        self.black_pinned_pieces = []
+        # self.white_pinned_pieces = []
+        # self.black_pinned_pieces = []
 
         for row in range(8):
             for col in range(8):
                 if self.board[row][col] is None or self.board[row][col].color != color:
                     continue
 
-                # If piece was pinned put it to the pinned pieces list
-                if self.board[row][col].pinned:
-                    self.board[row][col].pinned = False
-                    if color == "w":
-                        self.white_pinned_pieces.append(self.board[row][col])
-                    else:
-                        self.black_pinned_pieces.append(self.board[row][col])
+                # # If piece was pinned put it to the pinned pieces list
+                # if self.board[row][col].pinned:
+                #     self.board[row][col].pinned = False
+                #     if color == "w":
+                #         self.white_pinned_pieces.append(self.board[row][col])
+                #     else:
+                #         self.black_pinned_pieces.append(self.board[row][col])
 
                 # Update the moves for the piece class
                 self.board[row][col].moves = generate_moves.generate(self.board[row][col], self)
@@ -229,8 +229,8 @@ class Board:
                         self.black_moves.append(new_move)
 
         # Reset pinned pieces
-        self.white_pinned_pieces = []
-        self.black_pinned_pieces = []
+        # self.white_pinned_pieces = []
+        # self.black_pinned_pieces = []
 
     def soft_generate_piece_moves(self, color: str) -> None:
         """
@@ -337,12 +337,15 @@ class Board:
         # Get piece
         piece = self.board[old_pos[0]][old_pos[1]]
 
+        if piece is None:
+            # Print board and old and new position if piece is None
+            print_board(self)
+            print(f"Old: {old_pos} New: {new_pos}")
+            raise Exception("Piece is None")
+
         # Get attack lines for the color
         attack_lines = self.white_attack_lines if piece.color == "w" else self.black_attack_lines
         pinned_lines = self.white_pinned_lines if piece.color == "w" else self.black_pinned_lines
-
-        # Get pinned pieces for the color
-        pinned_pieces = self.white_pinned_pieces if piece.color == "w" else self.black_pinned_pieces
 
         # If piece is king, then have to recalculate attack lines
         if piece.piece_type == "K":
@@ -376,7 +379,16 @@ class Board:
         if len(attack_lines) == 0 and len(pinned_lines) == 0:
             return True
 
-        is_pinned = piece in pinned_pieces
+        # Find if the pieces old position is on the pinned line, if so then the piece is pinned
+        pin_line = None
+        is_pinned = False
+
+        for line in pinned_lines:
+            for pos in line:
+                if pos == old_pos:
+                    pin_line = line
+                    is_pinned = True
+                    break
 
         # Check if there are any attack lines and if the piece is pinned
         if len(attack_lines) != 0 and is_pinned:
@@ -384,13 +396,6 @@ class Board:
 
         # Check if the move is in the pinned lines
         if is_pinned and len(attack_lines) == 0:
-            # find the line
-            pin_line = None
-            for line in pinned_lines:
-                if old_pos in line:
-                    pin_line = line
-                    break
-
             if pin_line is None:
                 print(f"Piece: {piece.piece_type} {piece.color} Old: {old_pos} New: {new_pos}")
                 print(f"Attack lines: {attack_lines}")
@@ -400,7 +405,7 @@ class Board:
                 print(f"Move: {old_pos} -> {new_pos}")
                 print_board(self)
                 print(f"FEN: {self.fen_string}")
-                raise Exception("Pine line not found, but piece was pinned")
+                raise Exception("Pin line not found, but piece was pinned")
 
             # If the move is not in the pinned line, return False
             if new_pos in pin_line:
@@ -418,7 +423,9 @@ class Board:
             return False
 
         # King has to move to safety if more than 1 attack line
-        if len(attack_lines) > 1:
+        if len(attack_lines) > 1 and piece.piece_type != "K":
+            return False
+        elif len(attack_lines) > 1 and piece.piece_type == "K":
             # Move king momentarily to new position, generate new attack lines and check if it is safe
             potential_capture = self.board[new_pos[0]][new_pos[1]]
             king_old_position = piece.position
@@ -551,7 +558,6 @@ class Board:
         """
         # Generate the moves for all the pieces
         self.generate_piece_moves("w" if self.turn == "b" else "b")
-        self.soft_generate_piece_moves(self.turn)
 
         # Update clocks
         # If black moved, update fullmove number
@@ -655,13 +661,13 @@ class Board:
                 self.board[new_pos[0]][3] = self.board[new_pos[0]][0]
                 self.board[new_pos[0]][0] = None
                 # Update rook position and make first move False
-                self.board[new_pos[0]][3].position = "d1" if self.board[new_pos[0]][3].color == "w" else "d8"
+                self.board[new_pos[0]][3].position = (7, 3) if self.board[new_pos[0]][3].color == "w" else (0, 3)
                 self.board[new_pos[0]][3].first_move = False
             else:
                 self.board[new_pos[0]][5] = self.board[new_pos[0]][7]
                 self.board[new_pos[0]][7] = None
                 # Update rook position and make first move False
-                self.board[new_pos[0]][5].position = "f1" if self.board[new_pos[0]][5].color == "w" else "f8"
+                self.board[new_pos[0]][5].position = (7, 5) if self.board[new_pos[0]][5].color == "w" else (0, 5)
                 self.board[new_pos[0]][5].first_move = False
 
         # Remove castling rights if king or rook moved
@@ -788,10 +794,17 @@ def print_board(board) -> None:
 
 
 def game_test():
-    # TODO: somehow the bishop is pinned, not sure how
-    board = Board("3BQ3/3r3q/2k5/1bN3R1/p7/1R6/1K6/8 w  - 7 81")
+    game = Game()
+    engine = Engine(game)
 
-    print(board.can_move_2((3, 4), (4, 4)))
+    # print(engine.move_generation_test(1))
+    # for move in game.board.white_moves:
+    #     old_pos = f"{chr(97 + move[0][1])}{8 - move[0][0]}"
+    #     new_pos = f"{chr(97 + move[1][1])}{8 - move[1][0]}"
+    #     print(f"Old: {old_pos} New: {new_pos}")
+
+    # print(len(game.board.white_moves))
+    # print(engine.move_generation_test(3))
 
 
 def run_game() -> int:
@@ -870,7 +883,8 @@ def run_multiprocessing():
 def profiling():
     with cProfile.Profile() as pr:
         # test()
-        run_game()
+        # run_game()
+        game_test()
 
     stats = pstats.Stats(pr)
     stats.sort_stats(pstats.SortKey.TIME)
@@ -888,10 +902,11 @@ def check_board_size():
 
 def main():
     # game_test()
-    run_game()
+    # run_game()
     # run_multiprocessing()
-    # profiling()
+    profiling()
     # check_board_size()
+    # run_multiple_games(100)
     pass
 
 

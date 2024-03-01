@@ -62,10 +62,10 @@ class Engine:
 
         # Base case
         if len(moves) == 0:
-            if self.board.is_check() and self.board.turn == "w":
+            if self.board.is_check_2() and self.board.turn == "w":
                 # White is in checkmate
                 return -10000
-            elif self.board.is_check() and self.board.turn == "b":
+            elif self.board.is_check_2() and self.board.turn == "b":
                 # Black is in checkmate
                 return 10000
             else:
@@ -143,3 +143,17 @@ class Engine:
 
         # Perform the move
         return random_piece.position, move
+
+    def move_generation_test(self, depth):
+        if depth == 0:
+            return 1
+
+        moves = self.gather_all_moves()
+        positions = 0
+
+        for move in moves:
+            self.board.move(move[0], move[1])
+            positions += self.move_generation_test(depth - 1)
+            self.board.undo_move()
+
+        return positions
