@@ -6,8 +6,10 @@ from typing import Tuple, List
 import datetime as dt
 
 # My imports
-import generate_moves
+import engine.generate_moves as generate_moves
 from engine.chess_engine import Engine
+from engine.classes import Piece
+from engine.utils import pos_from_chess_notation
 
 
 def measure_time(func):
@@ -21,59 +23,6 @@ def measure_time(func):
         return result
 
     return wrapper
-
-
-def pos_from_chess_notation(notation: str) -> tuple:
-    """
-    Convert chess notation to matrix notation
-    :param notation: Chess notation
-    :return: Tuple of the position in the matrix
-    """
-    # Make sure the piece is not pawn, if it is, it only has two letters
-    if len(notation) == 2:
-        row = 8 - int(notation[1])
-        col = ord(notation[0]) - 97
-    else:
-        row = 8 - int(notation[2])
-        col = ord(notation[1]) - 97
-
-    return row, col
-
-
-class Piece:
-
-    def __init__(self, position: Tuple[int, int], color: str, piece_type: str, moves=None,
-                 first_move: bool = True, in_check: bool = False) -> None:
-        """
-        Initialize the piece
-        :param position: Position in chess notation
-        :param color: Color of the piece, either "w" or "b"
-        :param piece_type: Type of the piece, either "P", "N", "B", "R", "Q", "K
-        :param moves: List of possible moves of the piece in chess notation
-        """
-        # Position of the piece using chess notation
-        self.position: Tuple[int, int] = position
-
-        # Color of the piece
-        self.color: str = color
-
-        # Type of the piece
-        self.piece_type: str = piece_type
-
-        # Possible moves of the piece
-        self.moves: list = []
-
-        # If the piece is captured
-        self.captured: bool = False
-
-        # If it is the first move of the piece
-        self.first_move: bool = True if piece_type == "P" and position[1] in [2, 7] else False
-
-        # If the piece is king and is in check
-        self.in_check: bool = False
-
-        # If the piece is pinned
-        self.pinned: bool = False
 
 
 class Board:
@@ -649,7 +598,7 @@ def print_board(board) -> None:
         print("")
 
 
-def test():
+def game_test():
     game = Game()
     engine = Engine(game)
 
@@ -749,12 +698,11 @@ def check_board_size():
 
 
 def main():
-    # test()
+    # game_test()
     # run_game()
     # run_multiprocessing()
-    profiling()
+    # profiling()
     # check_board_size()
-
     pass
 
 
