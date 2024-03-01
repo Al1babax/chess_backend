@@ -5,7 +5,7 @@ from engine.classes import Piece, Board
 
 class Movement:
     # Class that look piece movement to all directions
-    def __init__(self, piece, board: Board) -> None:
+    def __init__(self, piece: Piece, board: Board) -> None:
         self.piece: Piece = piece
         self.board: list = board.board
         self.object: Board = board
@@ -36,7 +36,7 @@ class Movement:
 
             if self.object.checking_move_validity:
                 moves.append((position[0] - i, position[1]))
-            elif self.object.can_move(self.piece.position, (position[0] - i, position[1])):
+            elif self.object.can_move_2(self.piece.position, (position[0] - i, position[1])):
                 moves.append((position[0] - i, position[1]))
 
             # Break if enemy piece
@@ -70,7 +70,7 @@ class Movement:
 
             if self.object.checking_move_validity:
                 moves.append((position[0] + i, position[1]))
-            elif self.object.can_move(self.piece.position, (position[0] + i, position[1])):
+            elif self.object.can_move_2(self.piece.position, (position[0] + i, position[1])):
                 moves.append((position[0] + i, position[1]))
 
             # Break if enemy piece
@@ -100,7 +100,7 @@ class Movement:
 
             if self.object.checking_move_validity:
                 moves.append((position[0], position[1] + i))
-            elif self.object.can_move(self.piece.position, (position[0], position[1] + i)):
+            elif self.object.can_move_2(self.piece.position, (position[0], position[1] + i)):
                 moves.append((position[0], position[1] + i))
 
             # Break if enemy piece
@@ -130,7 +130,7 @@ class Movement:
 
             if self.object.checking_move_validity:
                 moves.append((position[0], position[1] - i))
-            elif self.object.can_move(self.piece.position, (position[0], position[1] - i)):
+            elif self.object.can_move_2(self.piece.position, (position[0], position[1] - i)):
                 moves.append((position[0], position[1] - i))
 
             # Break if enemy piece
@@ -160,7 +160,7 @@ class Movement:
 
             if self.object.checking_move_validity:
                 moves.append((position[0] - i, position[1] + i))
-            elif self.object.can_move(self.piece.position, (position[0] - i, position[1] + i)):
+            elif self.object.can_move_2(self.piece.position, (position[0] - i, position[1] + i)):
                 moves.append((position[0] - i, position[1] + i))
 
             # Break if enemy piece
@@ -190,7 +190,7 @@ class Movement:
 
             if self.object.checking_move_validity:
                 moves.append((position[0] - i, position[1] - i))
-            elif self.object.can_move(self.piece.position, (position[0] - i, position[1] - i)):
+            elif self.object.can_move_2(self.piece.position, (position[0] - i, position[1] - i)):
                 moves.append((position[0] - i, position[1] - i))
 
             # Break if enemy piece
@@ -220,7 +220,7 @@ class Movement:
 
             if self.object.checking_move_validity:
                 moves.append((position[0] + i, position[1] + i))
-            elif self.object.can_move(self.piece.position, (position[0] + i, position[1] + i)):
+            elif self.object.can_move_2(self.piece.position, (position[0] + i, position[1] + i)):
                 moves.append((position[0] + i, position[1] + i))
 
             # Break if enemy piece
@@ -250,7 +250,7 @@ class Movement:
 
             if self.object.checking_move_validity:
                 moves.append((position[0] + i, position[1] - i))
-            elif self.object.can_move(self.piece.position, (position[0] + i, position[1] - i)):
+            elif self.object.can_move_2(self.piece.position, (position[0] + i, position[1] - i)):
                 moves.append((position[0] + i, position[1] - i))
 
             # Break if enemy piece
@@ -288,7 +288,7 @@ class Movement:
 
             if self.object.checking_move_validity:
                 moves.append((move[0], move[1]))
-            elif self.object.can_move(self.piece.position, (move[0], move[1])):
+            elif self.object.can_move_2(self.piece.position, (move[0], move[1])):
                 moves.append((move[0], move[1]))
 
         return moves
@@ -313,7 +313,7 @@ class Movement:
                 if self.board[new_pos[0]][new_pos[1]] and self.board[new_pos[0]][new_pos[1]].color != self.piece.color:
                     if self.object.checking_move_validity:
                         moves.append((new_pos[0], new_pos[1]))
-                    elif self.object.can_move(self.piece.position, (new_pos[0], new_pos[1])):
+                    elif self.object.can_move_2(self.piece.position, (new_pos[0], new_pos[1])):
                         moves.append((new_pos[0], new_pos[1]))
 
         # Also check for en passant
@@ -370,7 +370,7 @@ class Movement:
         # Make certain the move is valid too
         if self.object.checking_move_validity:
             return move
-        elif self.object.can_move(self.piece.position, move[0]):
+        elif self.object.can_move_2(self.piece.position, move[0]):
             return move
         else:
             return []
@@ -487,7 +487,7 @@ class Movement:
         for move in moves:
             if self.object.checking_move_validity:
                 valid_moves.append(move)
-            elif self.object.can_move(self.piece.position, move):
+            elif self.object.can_move_2(self.piece.position, move):
                 valid_moves.append(move)
 
         return valid_moves
@@ -602,10 +602,10 @@ class AttackLines:
         # If enemy found, extend the attack_lines or pinning_lines
         if pinning_line:
             # Update the friendly piece to be pinned
-            self.board.board[possible_pin_piece[0]][possible_pin_piece[1]].is_pinned = True
-            self.pinning_lines.extend(attack_line)
+            self.board.board[possible_pin_piece[0]][possible_pin_piece[1]].pinned = True
+            self.pinning_lines.append(attack_line)
         else:
-            self.attack_lines.extend(attack_line)
+            self.attack_lines.append(attack_line)
 
     def diagonal_move(self, direction):
         attack_line = []
@@ -686,10 +686,10 @@ class AttackLines:
         # If enemy found, extend the attack_lines or pinning_lines
         if pinning_line:
             # Update the friendly piece to be pinned
-            self.board.board[possible_pin_piece[0]][possible_pin_piece[1]].is_pinned = True
-            self.pinning_lines.extend(attack_line)
+            self.board.board[possible_pin_piece[0]][possible_pin_piece[1]].pinned = True
+            self.pinning_lines.append(attack_line)
         else:
-            self.attack_lines.extend(attack_line)
+            self.attack_lines.append(attack_line)
 
     def knight_move(self):
         # Generate knight movement
@@ -717,7 +717,7 @@ class AttackLines:
 
             # If square is empty or enemy piece, add to attack lines
             if square and square.color != self.king.color and square.piece_type == "N":
-                self.attack_lines.append(move)
+                self.attack_lines.append([move])
 
     def move_up(self):
         self.normal_move("up")

@@ -2,7 +2,7 @@ import time
 import multiprocessing
 import cProfile
 import pstats
-from typing import Tuple, List
+from typing import Tuple, List, Optional
 import datetime as dt
 
 # My imports
@@ -32,7 +32,7 @@ class Board:
         self.fen_string = fen_string
 
         # Make array of 8x8
-        self.board = [[None for _ in range(8)] for _ in range(8)]
+        self.board: List[List[Optional[Piece]]] = [[None for _ in range(8)] for _ in range(8)]
 
         # Kings positions
         self.white_king: Tuple[int, int] = white_king
@@ -62,6 +62,16 @@ class Board:
         # Moves
         self.black_moves = [] if black_moves is None else black_moves
         self.white_moves = [] if white_moves is None else white_moves
+
+        # Attack lines for move validation and check
+        self.white_attack_lines = []
+        self.white_pinned_lines = []
+        self.black_attack_lines = []
+        self.black_pinned_lines = []
+
+        # Pinned pieces
+        self.white_pinned_pieces = []
+        self.black_pinned_pieces = []
 
         # Generate moves
         self.generate_piece_moves("w")
@@ -154,15 +164,54 @@ class Board:
         Generate the moves for only for the opponent's pieces
         :return:
         """
+        # First make attack lines for the color
+        king_piece: Piece = self.board[self.white_king[0]][self.white_king[1]] if color == "w" else \
+            self.board[self.black_king[0]][self.black_king[1]]
+
+        try:
+            real_attacks, potential_attacks = generate_moves.generate_lines(king_piece, self)
+        except Exception as e:
+            # Loop through the board history and if there is no k or K in fen string, print that fen and the previous
+            for fen in self.board_history:
+                board = fen.split(" ")[0]
+                if "k" not in board or "K" not in board:
+                    print(f"Illegal move fen: {self.board_history[self.board_history.index(fen) - 2]}")
+                    print(f"Previous fen: {self.board_history[self.board_history.index(fen) - 1]}")
+                    print(f"Current fen: {fen}")
+                    print(f"Color: {color}")
+                    print_board(self)
+                    break
+
+            raise e
+
+        if color == "w":
+            self.white_attack_lines = real_attacks
+            self.white_pinned_lines = potential_attacks
+        else:
+            self.black_attack_lines = real_attacks
+            self.black_pinned_lines = potential_attacks
+
         if color == "w":
             self.white_moves = []
         else:
             self.black_moves = []
 
+        # Reset pinned pieces
+        self.white_pinned_pieces = []
+        self.black_pinned_pieces = []
+
         for row in range(8):
             for col in range(8):
                 if self.board[row][col] is None or self.board[row][col].color != color:
                     continue
+
+                # If piece was pinned put it to the pinned pieces list
+                if self.board[row][col].pinned:
+                    self.board[row][col].pinned = False
+                    if color == "w":
+                        self.white_pinned_pieces.append(self.board[row][col])
+                    else:
+                        self.black_pinned_pieces.append(self.board[row][col])
 
                 # Update the moves for the piece class
                 self.board[row][col].moves = generate_moves.generate(self.board[row][col], self)
@@ -178,6 +227,10 @@ class Board:
                         self.white_moves.append(new_move)
                     else:
                         self.black_moves.append(new_move)
+
+        # Reset pinned pieces
+        self.white_pinned_pieces = []
+        self.black_pinned_pieces = []
 
     def soft_generate_piece_moves(self, color: str) -> None:
         """
@@ -271,6 +324,128 @@ class Board:
 
         return flag
 
+    def can_move_2(self, old_pos: Tuple[int, int], new_pos: Tuple[int, int]) -> bool:
+        """
+        1. Check if the piece is one of the pinned pieces, if so then it can only move to any square in that specific pin line
+        Also if there is real attack line, then it is illegal to move
+        2. Check for real attacks and if this piece is not pinned and can move to the real attack line, if not then it is illegal to move
+        3. In any other case the move is legal
+        :param old_pos:
+        :param new_pos:
+        :return:
+        """
+        # Get piece
+        piece = self.board[old_pos[0]][old_pos[1]]
+
+        # Get attack lines for the color
+        attack_lines = self.white_attack_lines if piece.color == "w" else self.black_attack_lines
+        pinned_lines = self.white_pinned_lines if piece.color == "w" else self.black_pinned_lines
+
+        # Get pinned pieces for the color
+        pinned_pieces = self.white_pinned_pieces if piece.color == "w" else self.black_pinned_pieces
+
+        # If piece is king, then have to recalculate attack lines
+        if piece.piece_type == "K":
+            # check if new kings position is 1 square away from enemy king position
+            if piece.color == "w":
+                if abs(self.black_king[0] - new_pos[0]) <= 1 and abs(self.black_king[1] - new_pos[1]) <= 1:
+                    return False
+            else:
+                if abs(self.white_king[0] - new_pos[0]) <= 1 and abs(self.white_king[1] - new_pos[1]) <= 1:
+                    return False
+
+            # Move king momentarily to new position, generate new attack lines and check if it is safe
+            potential_capture = self.board[new_pos[0]][new_pos[1]]
+            king_old_position = piece.position
+            self.board[new_pos[0]][new_pos[1]] = piece
+            self.board[old_pos[0]][old_pos[1]] = None
+            piece.position = new_pos
+
+            at_lines, _ = generate_moves.generate_lines(piece, self)
+
+            self.board[new_pos[0]][new_pos[1]] = potential_capture
+            self.board[old_pos[0]][old_pos[1]] = piece
+            piece.position = king_old_position
+
+            if len(at_lines) == 0:
+                return True
+            else:
+                return False
+
+        # If attack lines and pinned lines empty move is legal
+        if len(attack_lines) == 0 and len(pinned_lines) == 0:
+            return True
+
+        is_pinned = piece in pinned_pieces
+
+        # Check if there are any attack lines and if the piece is pinned
+        if len(attack_lines) != 0 and is_pinned:
+            return False
+
+        # Check if the move is in the pinned lines
+        if is_pinned and len(attack_lines) == 0:
+            # find the line
+            pin_line = None
+            for line in pinned_lines:
+                if old_pos in line:
+                    pin_line = line
+                    break
+
+            if pin_line is None:
+                print(f"Piece: {piece.piece_type} {piece.color} Old: {old_pos} New: {new_pos}")
+                print(f"Attack lines: {attack_lines}")
+                print(f"Pinned lines: {pinned_lines}")
+                print(f"White pinned pieces: {self.white_pinned_pieces}")
+                print(f"Black pinned pieces: {self.black_pinned_pieces}")
+                print(f"Move: {old_pos} -> {new_pos}")
+                print_board(self)
+                print(f"FEN: {self.fen_string}")
+                raise Exception("Pine line not found, but piece was pinned")
+
+            # If the move is not in the pinned line, return False
+            if new_pos in pin_line:
+                return True
+            else:
+                return False
+
+        if not is_pinned and len(attack_lines) == 0:
+            return True
+
+        # Make sure the piece can move to block the attack
+        if not is_pinned and len(attack_lines) == 1 and new_pos in attack_lines[0]:
+            return True
+        elif not is_pinned and len(attack_lines) == 1 and new_pos not in attack_lines[0]:
+            return False
+
+        # King has to move to safety if more than 1 attack line
+        if len(attack_lines) > 1:
+            # Move king momentarily to new position, generate new attack lines and check if it is safe
+            potential_capture = self.board[new_pos[0]][new_pos[1]]
+            king_old_position = piece.position
+            self.board[new_pos[0]][new_pos[1]] = piece
+            self.board[old_pos[0]][old_pos[1]] = None
+            piece.position = new_pos
+
+            at_lines, _ = generate_moves.generate_lines(piece, self)
+
+            self.board[new_pos[0]][new_pos[1]] = potential_capture
+            self.board[old_pos[0]][old_pos[1]] = piece
+            piece.position = king_old_position
+
+            if len(at_lines) == 0:
+                return True
+            else:
+                return False
+
+        print(f"Piece: {piece.piece_type} {piece.color} Old: {old_pos} New: {new_pos}")
+        print(f"Attack lines: {attack_lines}")
+        print(f"Pinned lines: {pinned_lines}")
+        print(f"White pinned pieces: {self.white_pinned_pieces}")
+        print(f"Black pinned pieces: {self.black_pinned_pieces}")
+        print_board(self)
+        print(f"FEN: {self.fen_string}")
+        raise Exception("Illegal move")
+
     def is_check(self, color) -> bool:
         """
         Check if the color's king is in check by checking if opposite color's pieces have the king in their moves
@@ -299,6 +474,20 @@ class Board:
 
         return False
 
+    def is_check_2(self) -> bool:
+        """
+        Check if it is check for whose turn it is, by checking attack lines
+        :return:
+        """
+        # Get attack lines for turn
+        attack_lines = self.white_attack_lines if self.turn == "w" else self.black_attack_lines
+
+        # If the attack lines are empty, return False
+        if len(attack_lines) == 0:
+            return False
+        else:
+            return True
+
     def is_checkmate(self, color) -> bool:
         """
         Check if the color is in checkmate
@@ -306,7 +495,7 @@ class Board:
         :return: True if the color is in checkmate else False
         """
         # If the king is not in check, return False
-        if not self.is_check(color):
+        if not self.is_check_2():
             return False
 
         # Loop through all the pieces
@@ -333,7 +522,7 @@ class Board:
         :return: True if the color is in stalemate else False
         """
         # If the king is in check, return False
-        if self.is_check(color):
+        if self.is_check_2():
             return False
 
         # Loop through all the pieces
@@ -511,7 +700,7 @@ class Board:
 class Game:
 
     def __init__(self) -> None:
-        self.board = Board("r1bqkbnr/p1p1pp1p/1p1Pn1p1/8/1B3Q2/8/PPP1PPPP/RN2KBNR w KQkq - 0 1")
+        self.board = Board("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
         self.white_move_history: list = []
         self.black_move_history: list = []
         self.game_over = False
@@ -599,10 +788,10 @@ def print_board(board) -> None:
 
 
 def game_test():
-    game = Game()
-    engine = Engine(game)
+    # TODO: somehow the bishop is pinned, not sure how
+    board = Board("3BQ3/3r3q/2k5/1bN3R1/p7/1R6/1K6/8 w  - 7 81")
 
-    print(engine.best_move())
+    print(board.can_move_2((3, 4), (4, 4)))
 
 
 def run_game() -> int:
@@ -699,7 +888,7 @@ def check_board_size():
 
 def main():
     # game_test()
-    # run_game()
+    run_game()
     # run_multiprocessing()
     # profiling()
     # check_board_size()
