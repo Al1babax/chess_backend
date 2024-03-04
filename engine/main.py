@@ -168,21 +168,7 @@ class Board:
         king_piece: Piece = self.board[self.white_king[0]][self.white_king[1]] if color == "w" else \
             self.board[self.black_king[0]][self.black_king[1]]
 
-        try:
-            real_attacks, potential_attacks = generate_moves.generate_lines(king_piece, self)
-        except Exception as e:
-            # Loop through the board history and if there is no k or K in fen string, print that fen and the previous
-            for fen in self.board_history:
-                board = fen.split(" ")[0]
-                if "k" not in board or "K" not in board:
-                    print(f"Illegal move fen: {self.board_history[self.board_history.index(fen) - 2]}")
-                    print(f"Previous fen: {self.board_history[self.board_history.index(fen) - 1]}")
-                    print(f"Current fen: {fen}")
-                    print(f"Color: {color}")
-                    print_board(self)
-                    break
-
-            raise e
+        real_attacks, potential_attacks = generate_moves.generate_lines(king_piece, self)
 
         if color == "w":
             self.white_attack_lines = real_attacks
@@ -196,22 +182,10 @@ class Board:
         else:
             self.black_moves = []
 
-        # Reset pinned pieces
-        # self.white_pinned_pieces = []
-        # self.black_pinned_pieces = []
-
         for row in range(8):
             for col in range(8):
                 if self.board[row][col] is None or self.board[row][col].color != color:
                     continue
-
-                # # If piece was pinned put it to the pinned pieces list
-                # if self.board[row][col].pinned:
-                #     self.board[row][col].pinned = False
-                #     if color == "w":
-                #         self.white_pinned_pieces.append(self.board[row][col])
-                #     else:
-                #         self.black_pinned_pieces.append(self.board[row][col])
 
                 # Update the moves for the piece class
                 self.board[row][col].moves = generate_moves.generate(self.board[row][col], self)
@@ -337,11 +311,11 @@ class Board:
         # Get piece
         piece = self.board[old_pos[0]][old_pos[1]]
 
-        if piece is None:
-            # Print board and old and new position if piece is None
-            print_board(self)
-            print(f"Old: {old_pos} New: {new_pos}")
-            raise Exception("Piece is None")
+        # if piece is None:
+        #     # Print board and old and new position if piece is None
+        #     print_board(self)
+        #     print(f"Old: {old_pos} New: {new_pos}")
+        #     raise Exception("Piece is None")
 
         # Get attack lines for the color
         attack_lines = self.white_attack_lines if piece.color == "w" else self.black_attack_lines
@@ -793,6 +767,7 @@ def print_board(board) -> None:
         print("")
 
 
+@measure_time
 def game_test():
     game = Game()
     engine = Engine(game)
@@ -804,7 +779,7 @@ def game_test():
     #     print(f"Old: {old_pos} New: {new_pos}")
 
     # print(len(game.board.white_moves))
-    # print(engine.move_generation_test(3))
+    print(engine.move_generation_test(4))
 
 
 def run_game() -> int:
